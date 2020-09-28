@@ -15,6 +15,8 @@ import { EffectComposer } from '../../three/jsm/postprocessing/EffectComposer.js
 import { RenderPass } from '../../three/jsm/postprocessing/RenderPass.js';
 import { GlitchPass } from '../../three/jsm/postprocessing/GlitchPass.js';
 import { UnrealBloomPass } from '../../three/jsm/postprocessing/UnrealBloomPass.js';
+import { AfterimagePass } from '../../three/jsm/postprocessing/AfterimagePass.js';
+import { BokehPass } from '../../three/jsm/postprocessing/BokehPass.js';
 
 import Stats from '../../three/jsm/libs/stats.module.js';
 
@@ -93,12 +95,12 @@ class MultiScene {
         this.words = ['ReMETA', 'sacri.ru', 're', 'meta', 'multi'];
         this.stats = Stats();
         //document.body.appendChild(this.stats.dom);
-        
+
         this.now = Date.now();
         this.delta = Date.now();
         this.then = Date.now();
-        this.interval = 1000/30;
-        
+        this.interval = 1000 / 30;
+
     }
 
     set_scenes(id) {
@@ -206,7 +208,7 @@ class MultiScene {
 
     render_create() {
         if (this.scene_id === 1) {
-            this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
+            this.renderer = new THREE.WebGLRenderer({antialias: false, alpha: false});
             this.renderer.autoClear = true;
             this.renderer.autoClearColor = true;
             this.renderer.autoClearDepth = true;
@@ -228,8 +230,19 @@ class MultiScene {
             this.bloomPass.strength = 1;
             this.bloomPass.radius = 0;
             this.composer.addPass(this.bloomPass);
+            this.afterimagePass = new AfterimagePass();
+            this.composer.addPass(this.afterimagePass);
+//            this.bokehPass = new BokehPass(this.scene, this.camera, {
+//                focus: 10.0,
+//                aperture: 0.025,
+//                maxblur: 0.01,
+//
+//                width: this.w,
+//                height: this.h
+//            });
+//            this.composer.addPass(this.bokehPass);
         }
-        this.glitchPass.goWild = false;
+        this.glitchPass.goWild = true;
     }
 
     onload() {
@@ -252,6 +265,7 @@ class MultiScene {
         this.set_path();
         this.extra();
         this.init_scene(this.scenes[ 'Scene' ]);
+
     }
 
     extra() {
@@ -288,14 +302,14 @@ class MultiScene {
 
     gltf_done(gltf) {
         let object = this.track(gltf.scene);
-         
+
         for (let i = 0; i < object.children.length; i++) {
-            
+
             if (object.children[i].name === 'floor') {
                 object.children[i].material = this.track(this.shaderMaterial);
             }
             if (object.children[i].name === 'sky') {
-               
+
                 object.children[i].material = this.track(this.shaderMaterial);
             }
         }
@@ -373,17 +387,17 @@ class MultiScene {
     }
 
     animate() {
-            requestAnimationFrame(mScene.animate);
-            if (mScene.json[mScene.sname]['animation']) {
-                mScene.mixer.update(mScene.clock.getDelta());
-            }
-            mScene.controls.update();
+        requestAnimationFrame(mScene.animate);
+        if (mScene.json[mScene.sname]['animation']) {
+            mScene.mixer.update(mScene.clock.getDelta());
+        }
+        mScene.controls.update();
 
-            mScene.stats.begin();
-            mScene.composer.render();
-            mScene.render();
-            mScene.stats.end();
-            mScene.stats.update();
+        mScene.stats.begin();
+        mScene.composer.render();
+        mScene.render();
+        mScene.stats.end();
+        mScene.stats.update();
     }
 
     figure_scroll_rotate(d) {
@@ -642,7 +656,7 @@ class MultiScene {
             fragmentShader: document.getElementById('fragmentshader').textContent
         });
         this.shader_speed = 0.001;
-        
+
         this.shaderGrad = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
             fragmentShader: document.getElementById('fragShader').textContent
@@ -657,24 +671,27 @@ class MultiScene {
         $.doTimeout('loopz');
     }
 
-    scroll_step_done(coord, curve){
+    scroll_step_done(coord, curve) {
         if (Math.abs(this.camera.position[coord] - curve[coord]) > 1) {
-                let tmp = (this.camera.position[coord] > curve[coord]) ? -1 : 1;
-                if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 10)) {
-                    curve[coord] += (this.scroll_dist * 2) * tmp * (-1);
-                }
-                this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 10) * tmp;
-                if (this.camera.position.x < 100) {
-                    this.glitchPass.goWild = true;
-                }
-                if (this.camera.position.x < 4) { //проверка на окончание прокрутки
-                    this.refresh();
-                    return false;
-                }
-                return true;
-            } else {
+            let tmp = (this.camera.position[coord] > curve[coord]) ? -1 : 1;
+            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 10)) {
+                curve[coord] += (this.scroll_dist * 2) * tmp * (-1);
+            }
+            this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 10) * tmp;
+            if (this.camera.position.x < 980) {
+                this.glitchPass.goWild = false;
+            }
+            if (this.camera.position.x < 100) {
+                this.glitchPass.goWild = true;
+            }
+            if (this.camera.position.x < 4) { //проверка на окончание прокрутки
+                this.refresh();
                 return false;
             }
+            return true;
+        } else {
+            return false;
+        }
     }
 
     scroll_do(coord, curve) {
@@ -692,6 +709,7 @@ class MultiScene {
     }
 
     on_wheel(e) {
+
         let delta;
         if (this.mobile) {
             delta = this.mob_delta;
@@ -740,14 +758,13 @@ class MultiScene {
         }
     }
 
-    cursor_move(z,y){
+    cursor_move(z, y) {
         if (!this.mobile) {
-            y = this.h/2 - y;
-            z = this.w/2 - z;
+            y = this.h / 4 - y / 2;
+            z = this.w / 4 - z / 2;
             this.controls.target = new THREE.Vector3(this.view.x, y, z);
         }
     }
-
 
     look_at_target(e) {
         for (let key in this.keys) {
@@ -782,9 +799,9 @@ class MultiScene {
     }
 
     refresh() {
-        if (AudioControlls.flag) {
-            AudioControlls.effects();
-        }
+//        if (AudioControlls.flag) {
+//            AudioControlls.effects();
+//        }
         this.scene.rotation.x = 0;
         if (this.scene_id === Object.keys(this.json).length) {
             HTMLControlls.lastScene();
@@ -848,10 +865,22 @@ $('#play').click(function () {
     }
 });
 
-$( "#loader" ).mousemove(function( event ) {
+//$("body").keydown(function (e) {
+//    mScene.look_at_target(e.which);
+//});
+//
+//$("body").keyup(function (e) {
+//    mScene.look_stop(e.which);
+//});
+
+$("#loader").mousemove(function (event) {
     mScene.cursor_move(event.clientX, event.clientY);
 });
 
-$( "#loader" ).click(function( ) {
+$("#loader").click(function ( ) {
     HTMLControlls.rand_rotate();
+});
+
+$("#dis").click(function ( ) {
+    window.location = 'https://gloagent.ru/category/art/znak.html';
 });
