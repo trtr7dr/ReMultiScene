@@ -1,37 +1,24 @@
 var AudioControlls = {
     init: function (path) {
         this.flag = false;
-        let self = this;
         this.audio = new Pizzicato.Sound(path, function () {
             $('#mute').css('opacity', 0.5);
         });
         this.audio.loop = true;
-        self.distortion = new Pizzicato.Effects.Distortion({
-            gain: 0
+        this.distortion = new Pizzicato.Effects.LowPassFilter({
+            frequency: 495,
+            peak: 12
         });
-        this.gain = 0;
-        this.d = 1;
+        this.feedback = false;
     },
     effects: function () {
-        let self = this;
-        $.doTimeout('gains', 30, function () {
-            self.audio.removeEffect(self.distortion);
-            self.gain += 0.01 * self.d;
-            if(self.gain > 0.9){
-                self.d = -1;
-            }
-            if(self.gain <= 0 && self.d === -1){
-                self.audio.removeEffect(self.distortion);
-                self.gain = 0;
-                self.d = 1;
-                return false;
-            }
-            self.distortion = new Pizzicato.Effects.Distortion({
-                gain: self.gain
-            });
-            self.audio.addEffect(self.distortion);
-            return true;
-        });
+        if(this.feedback){
+            this.feedback = false;
+            this.audio.removeEffect(this.distortion);
+        }else{
+            this.feedback = true;
+            this.audio.addEffect(this.distortion);
+        }
     },
     pause: function(){
         this.flag = false;
@@ -56,4 +43,4 @@ $('#mute').click(function () {
     }
 });
 
-AudioControlls.init('assets/meta/multi/Fatal-Свобода_внутри_пустоты.mp3');
+AudioControlls.init('assets/meta/multi/m/cyberpunk-trailer_by_alchemy-of-sound_preview.mp3');
