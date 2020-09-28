@@ -20,8 +20,6 @@ import { BokehPass } from '../../three/jsm/postprocessing/BokehPass.js';
 
 import Stats from '../../three/jsm/libs/stats.module.js';
 
-
-
 class ResourceTracker {
     constructor() {
         this.resources = new Set();
@@ -94,13 +92,10 @@ class MultiScene {
         this.track = this.resTracker.track.bind(this.resTracker);
         this.words = ['ReMETA', 'sacri.ru', 're', 'meta', 'multi'];
         this.stats = Stats();
-        //document.body.appendChild(this.stats.dom);
-
         this.now = Date.now();
         this.delta = Date.now();
         this.then = Date.now();
         this.interval = 1000 / 30;
-
     }
 
     set_scenes(id) {
@@ -136,9 +131,7 @@ class MultiScene {
         this.container = document.getElementById('container');
         this.w = this.container.offsetWidth;
         this.h = this.container.offsetHeight;
-        //this.scene = new THREE.Scene();
-
-
+        
         this.step = 0;
         this.scroll_dist = 5;
         this.lookSpeed = 0.5;
@@ -186,7 +179,6 @@ class MultiScene {
         this.loader = new GLTFLoader();
         this.loader.setDDSLoader(new DDSLoader());
         this.add_shader();
-        //window.addEventListener('resize', this.on_window_resize, false);
     }
 
     set_path() {
@@ -215,7 +207,6 @@ class MultiScene {
             this.renderer.autoClearStencil = true;
             this.renderer.debug.checkShaderErrors = true;
             this.container.appendChild(this.renderer.domElement);
-
         }
     }
 
@@ -230,19 +221,18 @@ class MultiScene {
             this.bloomPass.strength = 1;
             this.bloomPass.radius = 0;
             this.composer.addPass(this.bloomPass);
-            this.afterimagePass = new AfterimagePass();
+            this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
-//            this.bokehPass = new BokehPass(this.scene, this.camera, {
-//                focus: 10.0,
-//                aperture: 0.025,
-//                maxblur: 0.01,
-//
-//                width: this.w,
-//                height: this.h
-//            });
-//            this.composer.addPass(this.bokehPass);
         }
         this.glitchPass.goWild = true;
+    }
+    
+    after_post(){
+        if(this.afterimagePass.uniforms[ "damp" ].value === 0){
+            this.afterimagePass.uniforms[ "damp" ].value = 0.96;
+        }else{
+            this.afterimagePass.uniforms[ "damp" ].value = 0;
+        }
     }
 
     onload() {
@@ -265,7 +255,6 @@ class MultiScene {
         this.set_path();
         this.extra();
         this.init_scene(this.scenes[ 'Scene' ]);
-
     }
 
     extra() {
@@ -281,9 +270,7 @@ class MultiScene {
             }
         }
         if (mark.indexOf('add_text') !== -1) {
-
             this.add_text();
-
         }
         if (mark.indexOf('mirrors_massive') !== -1) {
             this.mirrors_massive();
@@ -302,14 +289,11 @@ class MultiScene {
 
     gltf_done(gltf) {
         let object = this.track(gltf.scene);
-
         for (let i = 0; i < object.children.length; i++) {
-
             if (object.children[i].name === 'floor') {
                 object.children[i].material = this.track(this.shaderMaterial);
             }
             if (object.children[i].name === 'sky') {
-
                 object.children[i].material = this.track(this.shaderMaterial);
             }
         }
@@ -344,17 +328,12 @@ class MultiScene {
         let fog = this.json[this.sname]['fog'];
         this.scene.fog = this.track(new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far));
         this.scene.add(this.camera);
-
+        
         let ambient = this.track(new THREE.AmbientLight(this.json[this.sname]['ambient']));
-
-
-
         this.scene.add(ambient);
-
         let lgt = this.json[this.sname]['light'];
         let light = this.track(new THREE.HemisphereLight(lgt.sky, lgt.color, lgt.power));
         this.scene.add(light);
-
         let spotlight;
         let spt = this.json[this.sname]['spot'];
         spotlight = this.track(new THREE.SpotLight(new THREE.Color(spt.color), 1));
@@ -368,12 +347,11 @@ class MultiScene {
         spotlight.shadow.mapSize.width = this.w;
         spotlight.shadow.mapSize.height = this.h;
         this.scene.add(spotlight);
+        
         this.renderer.shadowMap.enabled = true; //?
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.gltf = this.load_GLTF(sceneInfo.url);
-
         this.camera.position.copy(sceneInfo.cameraPos);
-
     }
 
     add_obj(obj) {
@@ -392,7 +370,6 @@ class MultiScene {
             mScene.mixer.update(mScene.clock.getDelta());
         }
         mScene.controls.update();
-
         mScene.stats.begin();
         mScene.composer.render();
         mScene.render();
@@ -416,10 +393,6 @@ class MultiScene {
         if (this.json[this.sname]['extra_func'].indexOf('rotate_scene') !== -1) {
             this.scene.rotation.x += 0.01 * d;
         }
-    }
-
-    scroll_anim() {
-
     }
 
     scroll_for_object() {
@@ -450,19 +423,14 @@ class MultiScene {
                 }
             });
         }
-
         this.cMirror.rotation.x += 0.01;
-
     }
 
     render() {
         this.geom_anim();
-        //this.post_render();
         this.uniforms.resolution.value.x = window.innerWidth;
         this.uniforms.resolution.value.y = window.innerHeight;
         this.uniforms[ "amplitude" ].value = 2.5 * Math.sin(Math.round(+new Date / 100) * this.shader_speed);
-        //this.composer.render(this.scene, this.camera);
-        //this.renderer.render(this.scene, this.camera);
     }
 
     get_step_size(filterLen, tapsPerPass, pass) {
@@ -583,7 +551,6 @@ class MultiScene {
                 }
             }
     }
-
     }
 
     mirrors_custom() {
@@ -606,7 +573,6 @@ class MultiScene {
             mirror.rotation.z = data[i].rotate.z;
             this.scene.add(mirror);
         }
-
     }
 
     point_massive() {
@@ -617,7 +583,6 @@ class MultiScene {
             var z = THREE.MathUtils.randFloatSpread(2000);
             vertices.push(x, y, z);
         }
-
         var geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
         var material = this.track(new THREE.PointsMaterial({color: 0x888888}));
@@ -635,7 +600,6 @@ class MultiScene {
             color: 0x777777,
             recursion: 1
         }));
-
         this.groundMirror.rotation.y = 90;
         this.scene.add(this.groundMirror);
     }
@@ -661,9 +625,6 @@ class MultiScene {
             uniforms: this.uniforms,
             fragmentShader: document.getElementById('fragShader').textContent
         });
-
-
-
     }
     scroll_timer_stop() {
         $.doTimeout('loopx');
@@ -709,7 +670,6 @@ class MultiScene {
     }
 
     on_wheel(e) {
-
         let delta;
         if (this.mobile) {
             delta = this.mob_delta;
@@ -727,7 +687,6 @@ class MultiScene {
         this.scroll_do('z', curve_coord);
         this.scroll_do('x', curve_coord);
         this.uniforms[ "color" ].value.offsetHSL(0.005, 0, 0);
-        //this.uniforms[ "amplitude" ].value = 2.5 * Math.sin( this.figure.cubes[0].rotation.y * 4 );
         this.scroll_dist = this.speed_in_end(5);
         if (!this.json[this.sname]['animation']) {
             this.mixer.update(curve_coord.x / 2000);
@@ -743,21 +702,6 @@ class MultiScene {
         }
         return res;
     }
-
-    look_stop(e) {
-        let r = false;
-        for (let key in this.keys) {
-            if (e === this.keys[key].code) {
-                this.keys[key].down = false;
-                this.keys[key].smooth = true;
-            }
-            r += this.keys[key].down;
-        }
-        if (r === 0) {
-            this.lookFlag = false;
-        }
-    }
-
     cursor_move(z, y) {
         if (!this.mobile) {
             y = this.h / 4 - y / 2;
@@ -766,42 +710,7 @@ class MultiScene {
         }
     }
 
-    look_at_target(e) {
-        for (let key in this.keys) {
-            if (e === this.keys[key]['code']) {
-                this.keys[key].down = true;
-                this.view[ this.keys[key]['axis'] ] += this.lookSpeed * this.keys[key]['param'];
-            }
-        }
-        if (!this.lookFlag) {
-            this.lookFlag = true;
-            this.smoothing = 50;
-            let self = this;
-            $.doTimeout('look');
-            $.doTimeout('look', 5, function () {
-                for (let key in self.keys) {
-                    if (self.keys[key].down || self.keys[key].smooth) {
-                        self.view[ self.keys[key]['axis'] ] += (self.lookSpeed * self.keys[key]['param']);
-                        if (self.smoothing <= 1) {
-                            self.keys[key].smooth = false;
-                        }
-                    }
-                }
-                self.controls.target = new THREE.Vector3(self.view.x, self.view.y, self.view.z);
-                if (self.lookFlag || self.smoothing > 1) {
-                    self.smoothing = (self.smoothing <= 1) ? 50 : self.smoothing - 1;
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-        }
-    }
-
     refresh() {
-//        if (AudioControlls.flag) {
-//            AudioControlls.effects();
-//        }
         this.scene.rotation.x = 0;
         if (this.scene_id === Object.keys(this.json).length) {
             HTMLControlls.lastScene();
@@ -865,20 +774,14 @@ $('#play').click(function () {
     }
 });
 
-//$("body").keydown(function (e) {
-//    mScene.look_at_target(e.which);
-//});
-//
-//$("body").keyup(function (e) {
-//    mScene.look_stop(e.which);
-//});
-
 $("#loader").mousemove(function (event) {
     mScene.cursor_move(event.clientX, event.clientY);
 });
 
 $("#loader").click(function ( ) {
+    mScene.after_post();
     HTMLControlls.rand_rotate();
+    AudioControlls.effects();
 });
 
 $("#dis").click(function ( ) {
