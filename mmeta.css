@@ -1,0 +1,157 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 16.07.2020, 15:01:52
+    Author     : glo-agent
+*/
+
+canvas {
+    /*            background: url(models/gltf/Monster/glTF/0.jpg);*/
+    background-size: cover;
+}
+#loader {
+    background: black;
+    background-size: cover;
+    height: 100vh;
+    /*    mix-blend-mode: screen;*/
+}
+img#preload {
+    width: 100px;
+    margin-left: calc(50vw - 50px);
+    margin-top: calc(50vh - 50px);
+    position: absolute;
+    transition: all 0.5s ease;
+    animation: rotate 1s linear infinite;
+}
+#container {
+    opacity: 0;
+    webkit-transition:all .7s ease-out;
+    -moz-transition:all .7s ease-out;
+    -o-transition:all .7s ease-out;
+    transition:all .7s ease-out;
+}
+div#wsda {
+    position: absolute;
+    bottom: 0;
+    z-index: 2000;
+    padding: 20px;
+    opacity: 0;
+    webkit-transition:all .3s ease-out;
+    -moz-transition:all .3s ease-out;
+    -o-transition:all .3s ease-out;
+    transition:all .3s ease-out;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(360deg);
+    }
+}
+
+#canvaspos {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2000;
+    background: black;
+}
+
+
+.windows {
+    position: absolute;
+    background: aqua;
+    width: 100%;
+    height: 200px;
+    z-index: 1;
+}
+
+canvas{
+    z-index: 2000;
+    mix-blend-mode: exclusion;
+}
+
+.container{
+    display: none;
+    opacity: 0;
+    webkit-transition:all .7s ease-out;
+    -moz-transition:all .7s ease-out;
+    -o-transition:all .7s ease-out;
+    transition:all .7s ease-out;
+}
+
+.footer {
+    display: none !important;
+}
+
+.mob_help {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    bottom: 0;
+    background: #7c7c7c;
+    right: 10px;
+    text-align: center;
+    font-size: 30px;
+    border-radius: 10px 10px 0 0;
+    padding: 5px;
+    opacity: 0;
+}
+
+#play{
+    position: absolute;
+    z-index: 2000;
+    top: 35px;
+    right: 22px;
+    background: white;
+    padding: 5px;
+    border-radius: 0px 0 10px 10px;
+    box-shadow: -2px 2px 11px black;
+    opacity: 0;
+    webkit-transition:all .2s linear;
+    -moz-transition:all .2s linear;
+    -o-transition:all .2s linear;
+    transition:all .2s linear;
+}
+
+#play:hover, #mute:hover{
+    opacity: 1 !important;
+}
+
+.auto_scroll_on{
+    box-shadow: inset -2px 2px 11px black !important;
+    background: #bebebe !important;
+}
+
+
+#mute {
+    position: absolute;
+    z-index: 2000;
+    top: 35px;
+    right: 80px;
+    background: white;
+    padding: 5px;
+    border-radius: 0px 0 10px 10px;
+    box-shadow: -2px 2px 11px black;
+    opacity: 0;
+    webkit-transition:all .2s linear;
+    -moz-transition:all .2s linear;
+    -o-transition:all .2s linear;
+    transition:all .2s linear;
+}
+
+
+@media only screen and (max-width:800px){
+    div#play {
+        top: 59px;
+        right: 10px;
+    }
+    div#mute {
+        top: 59px;
+        right: 70px;
+    }
+}

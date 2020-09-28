@@ -1,0 +1,196 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 07.07.2020, 11:43:02
+    Author     : glo-agent
+*/
+
+@font-face{
+    font-family:"DS Font Rus";src:url("../fonts/DS_Font_Rus_1.ttf") format("truetype");font-style:normal;font-weight:normal;
+}
+
+.mains{
+    margin-top: 35px;
+}
+
+.nopad{
+    padding: 0 !important;
+}
+
+
+#canvaspos {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2000;
+    background: black;
+}
+.plane {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+body, html {
+    background: #070017;
+    overflow-x: hidden;
+}
+
+
+
+#page-wrap {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/*** canvas ***/
+
+#loader{
+    -webkit-transition:filter .4s ease-out;
+    -moz-transition:filter .4s ease-out;
+    -o-transition:filter .4s ease-out;
+    transition:filter .4s ease-out;
+    cursor: crosshair;
+}
+
+canvas, .container, #container {
+    height: 100vh !important;
+    width: 100vw !important;
+    
+}
+div#container {
+    position: absolute;
+/*    top: 30%;
+    left: 37%;*/
+}
+.curtain {
+    position: absolute;
+    top: 0%;
+    right: 0%;
+    bottom: 0%;
+    left: 0%;
+}
+
+.curtain img {
+    display: none;
+}
+
+/*** handling errors ***/
+
+.no-curtains .curtain {
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.no-curtains .curtain img {
+    display: block;
+    min-width: 100%;
+    min-height: 100%;
+    object-fit: cover;
+}
+
+.nonetext{
+    display: none;
+}
+
+.container{
+    font-family: "FiraMono", Arial;
+}
+
+h2{
+    font-family:"DS Font Rus";
+    font-size: 70px;
+    mix-blend-mode: lighten;
+}
+/*.plato1{
+    background: url(../assets/meta/t1.png);
+}
+.plato2{
+    background: url(../assets/meta/t2.png);
+}
+.plato3{
+    background: url(../assets/meta/t3.png);
+}
+.plato1, .plato2, .plato3 {
+    
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    text-transform: uppercase;
+    color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+    
+    -webkit-animation:BackgroundAnimated 35s linear infinite;
+    -moz-animation:BackgroundAnimated 35s linear infinite;
+    -ms-animation:BackgroundAnimated 35s linear infinite;
+    -o-animation:BackgroundAnimated 35s linear infinite;
+    animation:BackgroundAnimated 35s linear infinite;
+}
+
+
+
+@keyframes BackgroundAnimated {
+    0% {
+        filter: hue-rotate(0deg)
+    }
+    50% {
+        filter: hue-rotate(180deg)
+    }
+    100%{
+        filter: hue-rotate(0deg)
+    }
+   
+}
+*/
+
+
+.plato1 {
+    color: white;
+    text-shadow: #009688 1px 1px 0, #009688 -1px -1px 0, #009688 -1px 1px 0, #009688 1px -1px 0;
+}
+
+
+.plato2{
+    color: white;
+    text-shadow: #2196F3 1px 1px 0, #2196F3 -1px -1px 0, #2196F3 -1px 1px 0, #2196F3 1px -1px 0;
+}
+.plato3{
+    color: white;
+        text-shadow: #E91E63 1px 1px 0, #E91E63 -1px -1px 0, #E91E63 -1px 1px 0, #E91E63 1px -1px 0;
+}
+
+
+h3 {
+    color: white;
+    font-size: 40px;
+}
+
+p {
+    color: white;
+    font-size: 20px;
+}
+
+@media only screen and (max-width:800px){
+    p {
+        font-size: 14px;
+    }
+    h3 {
+        font-size: 30px;
+    }
+    h2 {
+        font-size: 45px;
+    }
+}
