@@ -131,7 +131,7 @@ class MultiScene {
         this.container = document.getElementById('container');
         this.w = this.container.offsetWidth;
         this.h = this.container.offsetHeight;
-        
+
         this.step = 0;
         this.scroll_dist = 5;
         this.lookSpeed = 0.5;
@@ -226,11 +226,11 @@ class MultiScene {
         }
         this.glitchPass.goWild = true;
     }
-    
-    after_post(){
-        if(this.afterimagePass.uniforms[ "damp" ].value === 0){
+
+    after_post() {
+        if (this.afterimagePass.uniforms[ "damp" ].value === 0) {
             this.afterimagePass.uniforms[ "damp" ].value = 0.96;
-        }else{
+        } else {
             this.afterimagePass.uniforms[ "damp" ].value = 0;
         }
     }
@@ -328,7 +328,7 @@ class MultiScene {
         let fog = this.json[this.sname]['fog'];
         this.scene.fog = this.track(new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far));
         this.scene.add(this.camera);
-        
+
         let ambient = this.track(new THREE.AmbientLight(this.json[this.sname]['ambient']));
         this.scene.add(ambient);
         let lgt = this.json[this.sname]['light'];
@@ -347,7 +347,7 @@ class MultiScene {
         spotlight.shadow.mapSize.width = this.w;
         spotlight.shadow.mapSize.height = this.h;
         this.scene.add(spotlight);
-        
+
         this.renderer.shadowMap.enabled = true; //?
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.gltf = this.load_GLTF(sceneInfo.url);
@@ -703,11 +703,9 @@ class MultiScene {
         return res;
     }
     cursor_move(z, y) {
-        if (!this.mobile) {
-            y = this.h / 4 - y / 2;
-            z = this.w / 4 - z / 2;
-            this.controls.target = new THREE.Vector3(this.view.x, y, z);
-        }
+        y = this.h / 4 - y / 2;
+        z = this.w / 4 - z / 2;
+        this.controls.target = new THREE.Vector3(this.view.x, y, z);
     }
 
     refresh() {
@@ -728,7 +726,7 @@ class MultiScene {
     end_scenes() {
         mScene.resTracker.dispose();
         HTMLControlls.endScene();
-        console.log(mScene.scene);
+        window.location.href = "https://sacri.ru/db";
     }
 }
 
@@ -744,13 +742,18 @@ $('#loader').on('wheel', function (e) {
 });
 
 var lastY;
+var h_fmob = document.documentElement.clientHeight;
 $('#loader').on('touchmove', function (e) {
     mScene.mobile = true;
     var currentY = e.originalEvent.touches[0].clientY;
-    mScene.mob_delta = (currentY > lastY) ? -1 : 1;
+    mScene.mob_delta = (currentY > lastY) ? -0.05 : 0.05;
     lastY = currentY;
-    $('#loader').trigger('mousewheel');
+    $('#loader').trigger('wheel');
+//    var currentX = e.originalEvent.touches[0].clientX; крутить по Х для телефона
+//    mScene.cursor_move(currentX, h_fmob/2);
 });
+
+
 
 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
     HTMLControlls.mobileIcon();
@@ -759,6 +762,7 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phon
 }
 
 var sauto = false;
+
 $('#play').click(function () {
     if (sauto) {
         sauto = false;
