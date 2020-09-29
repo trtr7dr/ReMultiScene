@@ -5,20 +5,11 @@
  */
 
 "use strict";
-import * as THREE from '../../three/build/three.module.js';
-import { TrackballControls } from '../../three/jsm/controls/TrackballControls.js';
-import { GLTFLoader } from '../../three/jsm/loaders/GLTFLoader.js';
-import { DDSLoader } from '../../three/jsm/loaders/DDSLoader.js';
-import { Reflector } from '../../three/jsm/Reflector.js';
-
-import { EffectComposer } from '../../three/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from '../../three/jsm/postprocessing/RenderPass.js';
-import { GlitchPass } from '../../three/jsm/postprocessing/GlitchPass.js';
-import { UnrealBloomPass } from '../../three/jsm/postprocessing/UnrealBloomPass.js';
-import { AfterimagePass } from '../../three/jsm/postprocessing/AfterimagePass.js';
-import { BokehPass } from '../../three/jsm/postprocessing/BokehPass.js';
-
-import Stats from '../../three/jsm/libs/stats.module.js';
+import * as THREE from '/three/build/three.module.js';
+import { TrackballControls } from '/three/jsm/controls/TrackballControls.js';
+import { GLTFLoader } from '/three/jsm/loaders/GLTFLoader.js';
+import { DDSLoader } from '/three/jsm/loaders/DDSLoader.js';
+import { GodRaysFakeSunShader, GodRaysDepthMaskShader, GodRaysCombineShader, GodRaysGenerateShader } from '/three/jsm/shaders/GodRaysShader.js';
 
 class ResourceTracker {
     constructor() {
@@ -90,12 +81,8 @@ class MultiScene {
         this.json = data;
         this.resTracker = new ResourceTracker();
         this.track = this.resTracker.track.bind(this.resTracker);
-        this.words = ['ReMETA', 'sacri.ru', 're', 'meta', 'multi'];
-        this.stats = Stats();
-        this.now = Date.now();
-        this.delta = Date.now();
-        this.then = Date.now();
-        this.interval = 1000 / 30;
+         this.loader = new GLTFLoader();
+        this.loader.setDDSLoader(new DDSLoader());
     }
 
     set_scenes(id) {
@@ -105,7 +92,7 @@ class MultiScene {
         this.scenes = {
             Scene: {
                 name: 'Main',
-                url: 'assets/meta/multi/models/gltf/' + this.json[this.sname]['gltf'] + '.gltf',
+                url: '/assets/meta/multi/models/gltf/' + this.json[this.sname]['gltf'] + '.gltf',
                 cameraPos: new THREE.Vector3(start['x'], start['y'], start['z']),
                 animationTime: 4,
                 extensions: ['glTF']
@@ -114,12 +101,10 @@ class MultiScene {
     }
 
     camera_create() {
-        if (this.scene_id === 1) {
-            this.camera = new THREE.PerspectiveCamera(this.json[this.sname]['perspective'], this.w / this.h, 0.1, 1400);
-            this.controls = new TrackballControls(this.camera, this.renderer.domElement);
-            this.controls.maxDistance = 1000;
-            this.controls.enabled = false;
-        }
+        this.camera = new THREE.PerspectiveCamera(this.json[this.sname]['perspective'], this.container.offsetWidth / this.container.offsetHeight, 0.1, 1000);
+        this.controls = new TrackballControls(this.camera, this.renderer.domElement);
+        this.controls.maxDistance = 1000;
+        this.controls.enabled = false;
         this.camera.position.x = 1000;
     }
 
@@ -129,8 +114,8 @@ class MultiScene {
         this.mob_delta = 0;
         this.clock = new THREE.Clock();
         this.container = document.getElementById('container');
-        this.w = this.container.offsetWidth;
-        this.h = this.container.offsetHeight;
+        //this.scene = new THREE.Scene();
+
 
         this.step = 0;
         this.scroll_dist = 5;
@@ -173,12 +158,7 @@ class MultiScene {
             }
         };
         this.godrayRenderTargetResolutionMultiplier = 1.0 / 4.0;
-
-        this.scene = new THREE.Scene();
-
-        this.loader = new GLTFLoader();
-        this.loader.setDDSLoader(new DDSLoader());
-        this.add_shader();
+        //window.addEventListener('resize', this.on_window_resize, false);
     }
 
     set_path() {
@@ -198,59 +178,39 @@ class MultiScene {
         }
     }
 
-    render_create() {
-        if (this.scene_id === 1) {
-            this.renderer = new THREE.WebGLRenderer({antialias: false, alpha: false});
-            this.renderer.autoClear = true;
-            this.renderer.autoClearColor = true;
-            this.renderer.autoClearDepth = true;
-            this.renderer.autoClearStencil = true;
-            this.renderer.debug.checkShaderErrors = true;
-            this.container.appendChild(this.renderer.domElement);
-        }
-    }
-
-    postprocessing_create() {
-        if (this.scene_id === 1) {
-            this.composer = this.track(new EffectComposer(this.renderer));
-            this.composer.addPass(new RenderPass(this.scene, this.camera));
-            this.glitchPass = this.track(new GlitchPass());
-            this.composer.addPass(this.glitchPass);
-            this.bloomPass = this.track(new UnrealBloomPass(new THREE.Vector2(this.w, this.h), 1.5, 0.4, 0.85));
-            this.bloomPass.threshold = 0;
-            this.bloomPass.strength = 1;
-            this.bloomPass.radius = 0;
-            this.composer.addPass(this.bloomPass);
-            this.afterimagePass = new AfterimagePass(0);
-            this.composer.addPass(this.afterimagePass);
-        }
-        this.glitchPass.goWild = true;
-    }
-
-    after_post() {
-        if (this.afterimagePass.uniforms[ "damp" ].value === 0) {
-            this.afterimagePass.uniforms[ "damp" ].value = 0.96;
-        } else {
-            this.afterimagePass.uniforms[ "damp" ].value = 0;
-        }
+    post_preparation() {
+        let ray = this.json[this.sname]['ray'];
+        this.sunColor = ray.sun;
+        this.sunPosition = new THREE.Vector3(ray.position.x, ray.position.y, ray.position.z);
+        this.clipPosition = new THREE.Vector4();
+        this.screenSpacePosition = new THREE.Vector3();
     }
 
     onload() {
+        this.scene = new THREE.Scene();
+        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+
+        this.camera_create();
+        this.renderer.autoClear = true;
+        this.renderer.autoClearColor = true;
+        this.renderer.autoClearDepth = true;
+        this.renderer.autoClearStencil = true;
+        this.renderer.debug.checkShaderErrors = false;
+
         this.figure = {
             'cubes': [],
-            'text': [],
-            'mirror': []
+            'sphere': []
         };
-        this.render_create();
-        this.camera_create();
-        this.postprocessing_create();
-
         this.container.style.background = this.json[this.sname]['background'];
         this.container.style.filter = this.json[this.sname]['css']['filter'];
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setSize(this.w, this.h);
-        this.composer.setSize(this.w, this.h);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.physicallyCorrectLights = true;
+        this.container.appendChild(this.renderer.domElement);
+
+        this.postprocessing = {enabled: this.json[this.sname]['ray']['enabled']};
+        this.post_preparation();
+        this.init_postprocessing(window.innerWidth, window.innerHeight);
 
         this.set_path();
         this.extra();
@@ -269,41 +229,21 @@ class MultiScene {
                 this.add_cube();
             }
         }
-        if (mark.indexOf('add_text') !== -1) {
-            this.add_text();
+        if (mark.indexOf('add_sphere') !== -1) {
+            for (let i = 0; i < 5; i++) {
+                this.add_sphere();
+            }
         }
-        if (mark.indexOf('mirrors_massive') !== -1) {
-            this.mirrors_massive();
-        }
-        if (mark.indexOf('add_center_mirror') !== -1) {
-            this.add_center_mirror();
-        }
-        if (mark.indexOf('point_massive') !== -1) {
-            this.point_massive();
-        }
-        if (mark.indexOf('mirrors_custom') !== -1) {
-            this.mirrors_custom();
-        }
-
     }
 
-    gltf_done(gltf) {
+    gltf_done(gltf, time) {
         let object = this.track(gltf.scene);
-        for (let i = 0; i < object.children.length; i++) {
-            if (object.children[i].name === 'floor') {
-                object.children[i].material = this.track(this.shaderMaterial);
-            }
-            if (object.children[i].name === 'sky') {
-                object.children[i].material = this.track(this.shaderMaterial);
-            }
-        }
-
         let animations = gltf.animations;
-        this.mixer = this.track(new THREE.AnimationMixer(object));
+        this.mixer = new THREE.AnimationMixer(object);
         for (let i = 0; i < animations.length; i++) {
             let animation = animations[ i ];
-            if (this.time) {
-                animation.duration = this.time;
+            if (time) {
+                animation.duration = time;
             }
             let action = this.mixer.clipAction(animation);
             action.play();
@@ -314,7 +254,7 @@ class MultiScene {
         HTMLControlls.gltfReady();
     }
 
-    load_GLTF(url) {
+    gltf_load(url, time) {
         let self = this;
         return new Promise((resolve, reject) => {
             this.track(this.loader.load(url, function (gltf) {
@@ -326,17 +266,19 @@ class MultiScene {
 
     init_scene(sceneInfo) {
         let fog = this.json[this.sname]['fog'];
-        this.scene.fog = this.track(new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far));
+        this.scene.fog = new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far);
         this.scene.add(this.camera);
 
-        let ambient = this.track(new THREE.AmbientLight(this.json[this.sname]['ambient']));
+        let ambient = new THREE.AmbientLight(this.json[this.sname]['ambient']);
         this.scene.add(ambient);
+
         let lgt = this.json[this.sname]['light'];
-        let light = this.track(new THREE.HemisphereLight(lgt.sky, lgt.color, lgt.power));
+        let light = new THREE.HemisphereLight(lgt.sky, lgt.color, lgt.power);
         this.scene.add(light);
+
         let spotlight;
         let spt = this.json[this.sname]['spot'];
-        spotlight = this.track(new THREE.SpotLight(new THREE.Color(spt.color), 1));
+        spotlight = new THREE.SpotLight(new THREE.Color(spt.color), 1);
         spotlight.position.set(spt['pos-x'], spt['pos-y'], spt['pos-z']);
         spotlight.angle = spt['angle'];
         spotlight.penumbra = spt['penumbra'];
@@ -344,13 +286,12 @@ class MultiScene {
         spotlight.decay = spt['decay'];
         spotlight.castShadow = spt['castShadow'];
         spotlight.shadow.bias = 0.001;
-        spotlight.shadow.mapSize.width = this.w;
-        spotlight.shadow.mapSize.height = this.h;
+        spotlight.shadow.mapSize.width = 2048;
+        spotlight.shadow.mapSize.height = 2048;
         this.scene.add(spotlight);
-
         this.renderer.shadowMap.enabled = true; //?
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.gltf = this.load_GLTF(sceneInfo.url);
+        this.gltf_load(sceneInfo.url, sceneInfo.animationTime);
         this.camera.position.copy(sceneInfo.cameraPos);
     }
 
@@ -361,7 +302,7 @@ class MultiScene {
     on_window_resize() {
         this.camera.aspect = this.container.offsetWidth / this.container.offsetHeight;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(this.container.offsetWidth, this.container.offsetHeight);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     animate() {
@@ -370,11 +311,7 @@ class MultiScene {
             mScene.mixer.update(mScene.clock.getDelta());
         }
         mScene.controls.update();
-        mScene.stats.begin();
-        mScene.composer.render();
         mScene.render();
-        mScene.stats.end();
-        mScene.stats.update();
     }
 
     figure_scroll_rotate(d) {
@@ -395,15 +332,6 @@ class MultiScene {
         }
     }
 
-    scroll_for_object() {
-        if (this.json[this.sname]['extra_func'].indexOf('mirrors_massive') !== -1) {
-            this.figure.mirror.forEach((element) => {
-                element.rotation.z += 0.05;
-                element.rotation.y += 0.05;
-            });
-        }
-    }
-
     geom_anim() {
         if (this.json[this.sname]['extra_func'].indexOf('add_cube') !== -1) {
             this.figure.cubes.forEach((element) => {
@@ -412,254 +340,140 @@ class MultiScene {
                 element.rotation.z += element.random / 10000;
             });
         }
-        if (this.json[this.sname]['extra_func'].indexOf('add_text') !== -1) {
-            this.figure.text.forEach((element) => {
-                element.rotation.x += element.random / 2000;
-                element.rotation.y += element.random / 2000;
-                element.rotation.z += element.random / 2000;
-                element.position.y += element.random / 10;
-                if (element.position.y > 2000) {
-                    element.position.y = this.rand_int(-500, -100);
-                }
-            });
+    }
+
+    post_render() {
+        if (this.postprocessing) {
+            this.clipPosition.x = this.sunPosition.x;
+            this.clipPosition.y = this.sunPosition.y;
+            this.clipPosition.z = this.sunPosition.z;
+            this.clipPosition.w = 1;
+            this.clipPosition.applyMatrix4(this.camera.matrixWorldInverse).applyMatrix4(this.camera.projectionMatrix);
+            this.clipPosition.x /= this.clipPosition.w;
+            this.clipPosition.y /= this.clipPosition.w;
+            this.screenSpacePosition.x = (this.clipPosition.x + 1) / 2; // transform from [-1,1] to [0,1]
+            this.screenSpacePosition.y = (this.clipPosition.y + 1) / 2; // transform from [-1,1] to [0,1]
+            this.screenSpacePosition.z = this.clipPosition.z; // needs to stay in clip space for visibilty checks
+            this.postprocessing.godrayGenUniforms.vSunPositionScreenSpace.value.copy(this.screenSpacePosition);
+            this.postprocessing.godraysFakeSunUniforms.vSunPositionScreenSpace.value.copy(this.screenSpacePosition);
+            this.renderer.setRenderTarget(this.postprocessing.rtTextureColors);
+            this.renderer.clear(true, true, false);
+            let sunsqH = 0.8 * window.innerHeight; // 0.74 depends on extent of sun from shader
+            let sunsqW = sunsqH; // both depend on height because sun is aspect-corrected
+//            this.screenSpacePosition.x *= window.innerWidth;
+//            this.screenSpacePosition.y *= window.innerHeight;
+            this.renderer.setScissor(this.screenSpacePosition.x - sunsqW / 2, this.screenSpacePosition.y - sunsqH / 2, sunsqW, sunsqH);
+            //this.renderer.setScissorTest(true);
+            this.postprocessing.godraysFakeSunUniforms[ "fAspect" ].value = window.innerWidth / window.innerHeight;
+            this.postprocessing.scene.overrideMaterial = this.postprocessing.materialGodraysFakeSun;
+            this.renderer.setRenderTarget(this.postprocessing.rtTextureColors);
+            this.renderer.render(this.postprocessing.scene, this.postprocessing.camera);
+            this.renderer.setScissorTest(false);
+            this.scene.overrideMaterial = null;
+            this.renderer.setRenderTarget(this.postprocessing.rtTextureColors);
+            this.renderer.render(this.scene, this.camera);
+            // Depth
+            this.scene.overrideMaterial = this.materialDepth;
+            this.renderer.setRenderTarget(this.postprocessing.rtTextureDepth);
+            this.renderer.clear();
+            this.renderer.render(this.scene, this.camera);
+            this.postprocessing.godrayMaskUniforms[ "tInput" ].value = this.postprocessing.rtTextureDepth.texture;
+            this.postprocessing.scene.overrideMaterial = this.postprocessing.materialGodraysDepthMask;
+            this.renderer.setRenderTarget(this.postprocessing.rtTextureDepthMask);
+            this.renderer.render(this.postprocessing.scene, this.postprocessing.camera);
+            let filterLen = .8;
+            let TAPS_PER_PASS = 6.0;
+            this.filter_god_rays(this.postprocessing.rtTextureDepthMask.texture, this.postprocessing.rtTextureGodRays2, this.get_step_size(filterLen, TAPS_PER_PASS, this.json[this.sname].ray.params[0]));
+            this.filter_god_rays(this.postprocessing.rtTextureGodRays2.texture, this.postprocessing.rtTextureGodRays1, this.get_step_size(filterLen, TAPS_PER_PASS, this.json[this.sname].ray.params[1]));
+            this.filter_god_rays(this.postprocessing.rtTextureGodRays1.texture, this.postprocessing.rtTextureGodRays2, this.get_step_size(filterLen, TAPS_PER_PASS, this.json[this.sname].ray.params[2]));
+            this.postprocessing.godrayCombineUniforms[ "tColors" ].value = this.postprocessing.rtTextureColors.texture;
+            this.postprocessing.godrayCombineUniforms[ "tGodRays" ].value = this.postprocessing.rtTextureGodRays2.texture;
+            this.postprocessing.scene.overrideMaterial = this.postprocessing.materialGodraysCombine;
+            this.renderer.setRenderTarget(null);
+            this.renderer.render(this.postprocessing.scene, this.postprocessing.camera);
+            this.postprocessing.scene.overrideMaterial = null;
         }
-        this.cMirror.rotation.x += 0.01;
     }
 
     render() {
         this.geom_anim();
-        this.uniforms.resolution.value.x = window.innerWidth;
-        this.uniforms.resolution.value.y = window.innerHeight;
-        this.uniforms[ "amplitude" ].value = 2.5 * Math.sin(Math.round(+new Date / 100) * this.shader_speed);
+        this.post_render();
+        //this.renderer.render( this.scene, this.camera );
     }
 
     get_step_size(filterLen, tapsPerPass, pass) {
         return filterLen * Math.pow(tapsPerPass, -pass);
     }
 
-    add_img(name, coord) {
-        let loader = this.track(new THREE.TextureLoader());
-        let geometry, material;
-        let self = this;
-        loader.load('assets/meta/multi/texture' + name + '.png', function (texture) {
-            geometry = this.track(new THREE.BoxGeometry(Math.random(2, 4), 50, 25));
-            material = this.track(new THREE.MeshBasicMaterial({map: texture}));
-            let cube = this.track(new THREE.Mesh(geometry, material));
-            cube.position.x = coord[0];
-            cube.position.y = coord[1];
-            cube.position.z = coord[2];
-            self.scene.add(cube);
-            material.dispose();
-        });
-    }
-
     rand_int(min, max) {
         return min + Math.floor((max - min) * Math.random());
     }
 
-    text_done(font) {
-        let geometry;
-        for (let i = 0; i < 100; i++) {
-            geometry = this.track(new THREE.TextBufferGeometry(this.words[this.rand_int(0, this.words.length)], {
-                font: font,
-                size: this.rand_int(10, 30),
-                height: 1,
-                curveSegments: 12,
-                bevelEnabled: false,
-                bevelThickness: 10,
-                bevelSize: 8,
-                bevelOffset: 0,
-                bevelSegments: 5
-            }));
-            var obj = this.track(new THREE.Mesh(geometry, this.shaderGrad));
-            obj.position.x = this.rand_int(1000, -1000);
-            obj.position.y = this.rand_int(-500, -100);
-            obj.position.z = this.rand_int(-500, 500);
-            obj.rotation.x = this.rand_int(-90, 90);
-            obj.rotation.y = this.rand_int(-90, 90);
-            obj.rotation.z = this.rand_int(-90, 90);
-            obj.random = this.rand_int(1, 20);
-            this.figure.text.push(obj);
-            this.scene.add(obj);
-        }
-    }
-    add_text() {
-        var loader = new THREE.FontLoader();
-        let self = this;
-        loader.load('assets/Proxima.json', function (font) {
-            self.text_done(font);
-        });
-    }
-
-    cube_done(texture) {
-        let rnd = this.rand_int(1, 50);
-        let geometry = this.track(new THREE.BoxGeometry(rnd, rnd, rnd));
-        let material = this.track(new THREE.MeshBasicMaterial({map: texture}));
-        let cube = this.track(new THREE.Mesh(geometry, material));
-        cube.position.x = this.rand_int(1000, -1000);
-        cube.position.y = this.rand_int(-500, 500);
-        cube.position.z = this.rand_int(-500, 500);
-        cube.rotation.x = this.rand_int(-90, 90);
-        cube.rotation.y = this.rand_int(-90, 90);
-        cube.rotation.z = this.rand_int(-90, 90);
-        cube.random = this.rand_int(-100, 100);
-        this.scene.add(cube);
-        this.figure.cubes.push(cube);
-    }
     add_cube() {
         let loader = new THREE.TextureLoader();
         let txt = Math.floor(Math.random() * Math.floor(14)) + 1;
         let self = this;
-        loader.load('assets/meta/multi/texture/' + txt + '.png', function (texture) {
-            self.cube_done(texture);
+        loader.load('/assets/meta/multi/texture/' + txt + '.png', function (texture) {
+            let rnd = self.rand_int(1, 50);
+            let geometry = self.track(new THREE.BoxGeometry(rnd, rnd, rnd));
+            let material = self.track(new THREE.MeshBasicMaterial({map: texture}));
+            let cube = self.track(new THREE.Mesh(geometry, material));
+            cube.position.x = self.rand_int(1000, -1000);
+            cube.position.y = self.rand_int(-500, 500);
+            cube.position.z = self.rand_int(-500, 500);
+            cube.rotation.x = self.rand_int(-90, 90);
+            cube.rotation.y = self.rand_int(-90, 90);
+            cube.rotation.z = self.rand_int(-90, 90);
+            cube.random = self.rand_int(-100, 100);
+            self.scene.add(cube);
+            self.figure.cubes.push(cube);
+            geometry.dispose();
+            material.dispose();
         });
     }
-    add_center_mirror() {
-        var mirrorGeometry = this.track(new THREE.IcosahedronBufferGeometry(40));
-        this.cMirror = this.track(new Reflector(mirrorGeometry, {
-            clipBias: 0.05,
-            textureWidth: this.w * window.devicePixelRatio,
-            textureHeight: this.h * window.devicePixelRatio,
-            color: 0x777777,
-            recursion: 1
-        }));
-        this.cMirror.rotation.y = 90;
-        this.cMirror.position.y = 10;
-        this.scene.add(this.cMirror);
-    }
 
-    mirrors_massive(x = 580, y = 0, z = 0, size_y = 250, size_z = 250) {
-        this.mir_wal = [];
-        for (let j = 0; j < 3; j++) {
-            for (let i = 0; i < 3; i++) {
-
-                if ((i !== 0) || (j !== 1)) {
-                    let geometry = this.track(new THREE.BoxGeometry(1, size_z, size_y));
-                    this.mir_wal[i] = this.track(new Reflector(geometry, {
-                        clipBias: 0.05,
-                        textureWidth: this.w * window.devicePixelRatio,
-                        textureHeight: this.h * window.devicePixelRatio,
-                        color: 0x777777,
-                        recursion: 1
-                    }));
-                    this.mir_wal[i].position.x = x - i;
-                    this.mir_wal[i].position.y = i * size_y - 0;
-                    this.mir_wal[i].position.z = j * size_z - 200;
-                    this.mir_wal[i].rotation.z = -0.2;
-                    this.figure.mirror.push(this.mir_wal[i]);
-                    this.scene.add(this.mir_wal[i]);
-                }
-            }
-    }
-    }
-
-    mirrors_custom() {
-        let data = this.json[this.sname].mirror;
-        let geometry, mirror;
-        for (let i = 0; i < Object.keys(data).length; i++) {
-            geometry = this.track(new THREE.BoxGeometry(1, data[i].size.w, data[i].size.h));
-            mirror = this.track(new Reflector(geometry, {
-                clipBias: 0.05,
-                textureWidth: this.w * window.devicePixelRatio,
-                textureHeight: this.h * window.devicePixelRatio,
-                color: 0x777777,
-                recursion: 1
-            }));
-            mirror.position.x = data[i].pos.x;
-            mirror.position.y = data[i].pos.y;
-            mirror.position.z = data[i].pos.z;
-            mirror.rotation.x = data[i].rotate.x;
-            mirror.rotation.y = data[i].rotate.y;
-            mirror.rotation.z = data[i].rotate.z;
-            this.scene.add(mirror);
-        }
-    }
-
-    point_massive() {
-        var vertices = [];
-        for (var i = 0; i < 10000; i++) {
-            var x = THREE.MathUtils.randFloatSpread(2000);
-            var y = THREE.MathUtils.randFloatSpread(2000);
-            var z = THREE.MathUtils.randFloatSpread(2000);
-            vertices.push(x, y, z);
-        }
-        var geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        var material = this.track(new THREE.PointsMaterial({color: 0x888888}));
-        var points = this.track(new THREE.Points(geometry, material));
-
-        this.scene.add(points);
-    }
-
-    add_mirror() {
-        var mirrorGeometry = this.track(new THREE.CircleGeometry(400, 400));
-        this.groundMirror = this.track(new Reflector(mirrorGeometry, {
-            clipBias: 0.05,
-            textureWidth: this.w * window.devicePixelRatio,
-            textureHeight: this.h * window.devicePixelRatio,
-            color: 0x777777,
-            recursion: 1
-        }));
-        this.groundMirror.rotation.y = 90;
-        this.scene.add(this.groundMirror);
-    }
-
-    add_shader() {
-        this.uniforms = {
-            "amplitude": {value: 1.0},
-            "color": {value: new THREE.Color(0xff2200)},
-            "colorTexture": {value: new THREE.TextureLoader().load("assets/meta/multi/texture/3.png")}
-        };
-
-        this.uniforms.resolution = {type: 'v2', value: new THREE.Vector2(this.w, this.h)};
-
-        this.uniforms[ "colorTexture" ].value.wrapS = this.uniforms[ "colorTexture" ].value.wrapT = THREE.RepeatWrapping;
-        this.shaderMaterial = new THREE.ShaderMaterial({
-            uniforms: this.uniforms,
-            vertexShader: document.getElementById('vertexshader').textContent,
-            fragmentShader: document.getElementById('fragmentshader').textContent
-        });
-        this.shader_speed = 0.001;
-
-        this.shaderGrad = new THREE.ShaderMaterial({
-            uniforms: this.uniforms,
-            fragmentShader: document.getElementById('fragShader').textContent
+    add_sphere() {
+        let loader = new THREE.TextureLoader();
+        let self = this;
+        loader.load('/assets/meta/multi/texture/bone.jpg', function (texture) {
+            let geometry = self.track(new THREE.SphereGeometry(self.rand_int(1, 10), self.rand_int(1, 10), self.rand_int(1, 10), self.rand_int(1, 20), self.rand_int(1, 10), self.rand_int(1, 20), self.rand_int(1, 20), self.rand_int(1, 20), self.rand_int(1, 20)));
+            let material = self.track(new THREE.MeshBasicMaterial({map: texture}));
+            let sphere = new THREE.Mesh(geometry, material);
+            sphere.position.x = self.rand_int(-400, 400);
+            sphere.position.y = self.rand_int(-400, 400);
+            sphere.position.z = self.rand_int(-400, 400);
+            sphere.lightMapIntensity = 2;
+            self.scene.add(sphere);
+            self.figure.sphere.push(sphere);
+            geometry.dispose();
+            material.dispose();
         });
     }
+
     scroll_timer_stop() {
         $.doTimeout('loopx');
         $.doTimeout('loopy');
         $.doTimeout('loopz');
     }
 
-    scroll_step_done(coord, curve) {
-        if (Math.abs(this.camera.position[coord] - curve[coord]) > 1) {
-            let tmp = (this.camera.position[coord] > curve[coord]) ? -1 : 1;
-            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 10)) {
-                curve[coord] += (this.scroll_dist * 2) * tmp * (-1);
-            }
-            this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 10) * tmp;
-            if (this.camera.position.x < 980) {
-                this.glitchPass.goWild = false;
-            }
-            if (this.camera.position.x < 100) {
-                this.glitchPass.goWild = true;
-            }
-            if (this.camera.position.x < 4) { //проверка на окончание прокрутки
-                this.refresh();
-                return false;
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     scroll_do(coord, curve) {
         let self = this;
         $.doTimeout('loop' + coord);
         $.doTimeout('loop' + coord, 1, function () {
-            return self.scroll_step_done(coord, curve);
+            if (Math.abs(self.camera.position[coord] - curve[coord]) > 1) {
+                let tmp = (self.camera.position[coord] > curve[coord]) ? -1 : 1;
+                if (Math.abs(self.camera.position[coord] - curve[coord]) > (self.scroll_dist * 10)) {
+                    curve[coord] += (self.scroll_dist * 2) * tmp * (-1);
+                }
+                self.camera.position[coord] += Math.abs(self.camera.position[coord] - curve[coord]) / (self.scroll_dist * 10) * tmp;
+                if (self.camera.position.x < 4) { //проверка на окончание прокрутки
+                    self.refresh();
+                    return false;
+                }
+                return true;
+            } else {
+                return false;
+            }
         });
     }
 
@@ -686,13 +500,10 @@ class MultiScene {
         this.scroll_do('y', curve_coord);
         this.scroll_do('z', curve_coord);
         this.scroll_do('x', curve_coord);
-        this.uniforms[ "color" ].value.offsetHSL(0.005, 0, 0);
         this.scroll_dist = this.speed_in_end(5);
         if (!this.json[this.sname]['animation']) {
             this.mixer.update(curve_coord.x / 2000);
         }
-
-        this.scroll_for_object();
     }
 
     speed_in_end(max_speed) {
@@ -702,31 +513,162 @@ class MultiScene {
         }
         return res;
     }
-    cursor_move(z, y) {
-        y = this.h / 4 - y / 2;
-        z = this.w / 4 - z / 2;
-        this.controls.target = new THREE.Vector3(this.view.x, y, z);
+
+    init_postprocessing(renderTargetWidth, renderTargetHeight) {
+        this.postprocessing.scene = new THREE.Scene();
+        this.postprocessing.camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -10000, 10000);
+        this.postprocessing.camera.position.z = 100;
+        this.postprocessing.scene.add(this.postprocessing.camera);
+        let pars = {minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat};
+        this.postprocessing.rtTextureColors = new THREE.WebGLRenderTarget(renderTargetWidth, renderTargetHeight, pars);
+        this.postprocessing.rtTextureDepth = new THREE.WebGLRenderTarget(renderTargetWidth, renderTargetHeight, pars);
+        this.postprocessing.rtTextureDepthMask = new THREE.WebGLRenderTarget(renderTargetWidth, renderTargetHeight, pars);
+
+        let adjustedWidth = renderTargetWidth * this.godrayRenderTargetResolutionMultiplier;
+        let adjustedHeight = renderTargetHeight * this.godrayRenderTargetResolutionMultiplier;
+        this.postprocessing.rtTextureGodRays1 = new THREE.WebGLRenderTarget(adjustedWidth, adjustedHeight, pars);
+        this.postprocessing.rtTextureGodRays2 = new THREE.WebGLRenderTarget(adjustedWidth, adjustedHeight, pars);
+
+        let godraysMaskShader = GodRaysDepthMaskShader;
+        this.postprocessing.godrayMaskUniforms = THREE.UniformsUtils.clone(godraysMaskShader.uniforms);
+        this.postprocessing.materialGodraysDepthMask = new THREE.ShaderMaterial({
+            uniforms: this.postprocessing.godrayMaskUniforms,
+            vertexShader: godraysMaskShader.vertexShader,
+            fragmentShader: godraysMaskShader.fragmentShader
+        });
+
+        let godraysGenShader = GodRaysGenerateShader;
+        this.postprocessing.godrayGenUniforms = THREE.UniformsUtils.clone(godraysGenShader.uniforms);
+        this.postprocessing.materialGodraysGenerate = new THREE.ShaderMaterial({
+            uniforms: this.postprocessing.godrayGenUniforms,
+            vertexShader: godraysGenShader.vertexShader,
+            fragmentShader: godraysGenShader.fragmentShader
+        });
+
+        let godraysCombineShader = GodRaysCombineShader;
+        this.postprocessing.godrayCombineUniforms = THREE.UniformsUtils.clone(godraysCombineShader.uniforms);
+        this.postprocessing.materialGodraysCombine = new THREE.ShaderMaterial({
+            uniforms: this.postprocessing.godrayCombineUniforms,
+            vertexShader: godraysCombineShader.vertexShader,
+            fragmentShader: godraysCombineShader.fragmentShader
+        });
+
+        let godraysFakeSunShader = GodRaysFakeSunShader;
+        this.postprocessing.godraysFakeSunUniforms = THREE.UniformsUtils.clone(godraysFakeSunShader.uniforms);
+        this.postprocessing.materialGodraysFakeSun = new THREE.ShaderMaterial({
+            uniforms: this.postprocessing.godrayMaskUniforms,
+            vertexShader: godraysFakeSunShader.vertexShader,
+            fragmentShader: godraysFakeSunShader.fragmentShader
+        });
+
+        this.postprocessing.godraysFakeSunUniforms.sunColor.value.setHex(this.sunColor);
+        this.postprocessing.godrayCombineUniforms.fGodRayIntensity.value = 0.75;
+        this.postprocessing.quad = this.track(new THREE.Mesh(
+                new THREE.PlaneBufferGeometry(1.0, 1.0),
+                this.postprocessing.materialGodraysGenerate
+                ));
+        this.postprocessing.quad.position.z = -9900;
+        this.postprocessing.scene.add(this.postprocessing.quad);
+    }
+
+    filter_god_rays(inputTex, renderTarget, stepSize) {
+        this.postprocessing.scene.overrideMaterial = this.postprocessing.materialGodraysGenerate;
+        this.postprocessing.godrayGenUniforms[ "fStepSize" ].value = stepSize;
+        this.postprocessing.godrayGenUniforms[ "tInput" ].value = inputTex;
+        this.renderer.setRenderTarget(renderTarget);
+        this.renderer.render(this.postprocessing.scene, this.postprocessing.camera);
+        this.postprocessing.scene.overrideMaterial = null;
+    }
+
+    look_stop(e) {
+        let r = false;
+        for (let key in this.keys) {
+            if (e === this.keys[key].code) {
+                this.keys[key].down = false;
+                this.keys[key].smooth = true;
+            }
+            r += this.keys[key].down;
+        }
+        if (r === 0) {
+            this.lookFlag = false;
+        }
+    }
+
+    look_at_target(e) {
+        for (let key in this.keys) {
+            if (e === this.keys[key]['code']) {
+                this.keys[key].down = true;
+                this.view[ this.keys[key]['axis'] ] += this.lookSpeed * this.keys[key]['param'];
+            }
+        }
+        if (!this.lookFlag) {
+            this.lookFlag = true;
+            this.smoothing = 50;
+            let self = this;
+            $.doTimeout('look');
+            $.doTimeout('look', 5, function () {
+                for (let key in self.keys) {
+                    if (self.keys[key].down || self.keys[key].smooth) {
+                        self.view[ self.keys[key]['axis'] ] += (self.lookSpeed * self.keys[key]['param']);
+                        if (self.smoothing <= 1) {
+                            self.keys[key].smooth = false;
+                        }
+                    }
+                }
+                self.controls.target = new THREE.Vector3(self.view.x, self.view.y, self.view.z);
+                if (self.lookFlag || self.smoothing > 1) {
+                    self.smoothing = (self.smoothing <= 1) ? 50 : self.smoothing - 1;
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+        }
+    }
+
+
+    dispose_postprocessing() {
+        this.postprocessing.godrayMaskUniforms[ "tInput" ].value.dispose();
+        this.postprocessing.godrayGenUniforms[ "tInput" ].value.dispose();
+        this.postprocessing.godrayCombineUniforms[ "tColors" ].value.dispose();
+        this.postprocessing.rtTextureColors.dispose();
+        this.postprocessing.rtTextureDepth.dispose();
+        this.postprocessing.rtTextureDepthMask.dispose();
+        this.postprocessing.rtTextureGodRays1.dispose();
+        this.postprocessing.rtTextureGodRays2.dispose();
+        this.postprocessing.materialGodraysDepthMask.dispose();
+        this.postprocessing.materialGodraysGenerate.dispose();
+        this.postprocessing.materialGodraysCombine.dispose();
+        this.postprocessing.materialGodraysFakeSun.dispose();
     }
 
     refresh() {
+        if (AudioControlls.flag) {
+            AudioControlls.effects();
+        }
         this.scene.rotation.x = 0;
         if (this.scene_id === Object.keys(this.json).length) {
             HTMLControlls.lastScene();
-            this.end_scenes();
+            setTimeout(this.end_scenes, 700);
         } else {
             this.step = 0;
             this.scroll_dist = 5;
-            this.renderer.clear(true, true, true);
-            this.set_scenes((this.scene_id + 1));
             this.resTracker.dispose();
-            this.renderer.dispose();
+            this.dispose_postprocessing();
+            this.renderer.clear(true, true, true);
+
+            this.set_scenes((this.scene_id + 1));
             this.onload();
         }
     }
+
     end_scenes() {
-        mScene.resTracker.dispose();
+        mScene.dispose_scene();
+        mScene.dispose_postprocessing();
+        for (let i = mScene.scene.children.length - 1; i >= 0; i--) {
+            mScene.scene.remove(mScene.scene.children[i]);
+        }
         HTMLControlls.endScene();
-        window.location.href = "https://sacri.ru/db";
     }
 }
 
@@ -735,25 +677,20 @@ var mScene = new MultiScene(json);
 mScene.init(1);
 mScene.onload();
 
-$('#loader').on('wheel', function (e) {
+$('#loader').on('mousewheel', function (e) {
     $.doTimeout('a_scroll');
     $('#play').removeClass("auto_scroll_on");
     mScene.on_wheel();
 });
 
 var lastY;
-var h_fmob = document.documentElement.clientHeight;
 $('#loader').on('touchmove', function (e) {
     mScene.mobile = true;
     var currentY = e.originalEvent.touches[0].clientY;
-    mScene.mob_delta = (currentY > lastY) ? -0.05 : 0.05;
+    mScene.mob_delta = (currentY > lastY) ? -1 : 1;
     lastY = currentY;
-    $('#loader').trigger('wheel');
-//    var currentX = e.originalEvent.touches[0].clientX; крутить по Х для телефона
-//    mScene.cursor_move(currentX, h_fmob/2);
+    $('#loader').trigger('mousewheel');
 });
-
-
 
 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
     HTMLControlls.mobileIcon();
@@ -762,7 +699,6 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phon
 }
 
 var sauto = false;
-
 $('#play').click(function () {
     if (sauto) {
         sauto = false;
@@ -778,16 +714,10 @@ $('#play').click(function () {
     }
 });
 
-$("#loader").mousemove(function (event) {
-    mScene.cursor_move(event.clientX, event.clientY);
+$("body").keydown(function (e) {
+    mScene.look_at_target(e.which);
 });
 
-$("#loader").click(function ( ) {
-    mScene.after_post();
-    HTMLControlls.rand_rotate();
-    AudioControlls.effects();
-});
-
-$("#dis").click(function ( ) {
-    window.location = 'https://gloagent.ru/category/art/znak.html';
+$("body").keyup(function (e) {
+    mScene.look_stop(e.which);
 });
