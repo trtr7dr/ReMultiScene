@@ -75,12 +75,28 @@ class ResourceTracker {
                 if (resource.parent) {
                     resource.parent.remove(resource);
                 }
+                if(Boolean(resource.material)){
+                    resource.material.dispose();
+                    resource.remove(resource.material);
+                }
+                if(Boolean(resource.geometry)){
+                    resource.geometry.dispose();
+                    resource.remove(resource.geometry);
+                }
+                if(Boolean(resource.texture)){
+                    resource.texture.dispose();
+                    resource.remove(resource.texture.geometry);
+                }
             }
             if (resource.dispose) {
                 resource.dispose();
             }
         }
         this.resources.clear();
+        mScene.renderer.dispose();
+        
+        mScene.afterimagePass.textureComp.dispose();
+        mScene.afterimagePass.textureOld.dispose();
     }
 }
 
@@ -205,7 +221,8 @@ class MultiScene {
             this.renderer.autoClearColor = true;
             this.renderer.autoClearDepth = true;
             this.renderer.autoClearStencil = true;
-            this.renderer.debug.checkShaderErrors = true;
+            this.renderer.debug.checkShaderErrors = false;
+            this.renderer.localClippingEnabled = true;
             this.container.appendChild(this.renderer.domElement);
         }
     }
@@ -214,8 +231,8 @@ class MultiScene {
         if (this.scene_id === 1) {
             this.composer = this.track(new EffectComposer(this.renderer));
             this.composer.addPass(new RenderPass(this.scene, this.camera));
-            this.glitchPass = this.track(new GlitchPass());
-            this.composer.addPass(this.glitchPass);
+//            this.glitchPass = this.track(new GlitchPass());
+//            this.composer.addPass(this.glitchPass);
             this.bloomPass = this.track(new UnrealBloomPass(new THREE.Vector2(this.w, this.h), 1.5, 0.4, 0.85));
             this.bloomPass.threshold = 0;
             this.bloomPass.strength = 1;
@@ -224,7 +241,7 @@ class MultiScene {
             this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
         }
-        this.glitchPass.goWild = true;
+        //this.glitchPass.goWild = false;
     }
 
     after_post() {
@@ -255,6 +272,8 @@ class MultiScene {
         this.set_path();
         this.extra();
         this.init_scene(this.scenes[ 'Scene' ]);
+        
+        this.add_center_mirror();
     }
 
     extra() {
@@ -296,6 +315,7 @@ class MultiScene {
             if (object.children[i].name === 'sky') {
                 object.children[i].material = this.track(this.shaderMaterial);
             }
+            this.track(object.children[i]);
         }
 
         let animations = gltf.animations;
@@ -366,15 +386,16 @@ class MultiScene {
 
     animate() {
         requestAnimationFrame(mScene.animate);
-        if (mScene.json[mScene.sname]['animation']) {
-            mScene.mixer.update(mScene.clock.getDelta());
-        }
         mScene.controls.update();
-        mScene.stats.begin();
-        mScene.composer.render();
+        
+//        if (mScene.json[mScene.sname]['animation']) {
+//            mScene.mixer.update(mScene.clock.getDelta());
+//        }
+        
         mScene.render();
-        mScene.stats.end();
-        mScene.stats.update();
+        mScene.composer.render();
+        //mScene.renderer.render(mScene.scene, mScene.camera);
+        
     }
 
     figure_scroll_rotate(d) {
@@ -437,22 +458,6 @@ class MultiScene {
         return filterLen * Math.pow(tapsPerPass, -pass);
     }
 
-    add_img(name, coord) {
-        let loader = this.track(new THREE.TextureLoader());
-        let geometry, material;
-        let self = this;
-        loader.load('assets/meta/multi/texture' + name + '.png', function (texture) {
-            geometry = this.track(new THREE.BoxGeometry(Math.random(2, 4), 50, 25));
-            material = this.track(new THREE.MeshBasicMaterial({map: texture}));
-            let cube = this.track(new THREE.Mesh(geometry, material));
-            cube.position.x = coord[0];
-            cube.position.y = coord[1];
-            cube.position.z = coord[2];
-            self.scene.add(cube);
-            material.dispose();
-        });
-    }
-
     rand_int(min, max) {
         return min + Math.floor((max - min) * Math.random());
     }
@@ -508,23 +513,25 @@ class MultiScene {
     }
     add_cube() {
         let loader = new THREE.TextureLoader();
-        let txt = Math.floor(Math.random() * Math.floor(14)) + 1;
+        let t = Math.floor(Math.random() * Math.floor(14)) + 1;
         let self = this;
-        loader.load('assets/meta/multi/texture/' + txt + '.png', function (texture) {
+        let txt = this.track(loader.load('assets/meta/multi/texture/' + t + '.png', function (texture) {
             self.cube_done(texture);
-        });
+        }));
     }
     add_center_mirror() {
-        var mirrorGeometry = this.track(new THREE.IcosahedronBufferGeometry(40));
-        this.cMirror = this.track(new Reflector(mirrorGeometry, {
-            clipBias: 0.05,
-            textureWidth: this.w * window.devicePixelRatio,
-            textureHeight: this.h * window.devicePixelRatio,
-            color: 0x777777,
-            recursion: 1
-        }));
-        this.cMirror.rotation.y = 90;
-        this.cMirror.position.y = 10;
+        if (this.scene_id === 1) {
+            var mirrorGeometry = this.track(new THREE.IcosahedronBufferGeometry(40));
+            this.cMirror = this.track(new Reflector(mirrorGeometry, {
+                clipBias: 0.05,
+                textureWidth: this.w * window.devicePixelRatio,
+                textureHeight: this.h * window.devicePixelRatio,
+                color: 0x777777,
+                recursion: 1
+            }));
+            this.cMirror.rotation.y = 90;
+            this.cMirror.position.y = 10;
+        }
         this.scene.add(this.cMirror);
     }
 
@@ -605,10 +612,13 @@ class MultiScene {
     }
 
     add_shader() {
+
+        let texture = this.track(new THREE.TextureLoader().load("assets/meta/multi/texture/3.png"));
+
         this.uniforms = {
             "amplitude": {value: 1.0},
             "color": {value: new THREE.Color(0xff2200)},
-            "colorTexture": {value: new THREE.TextureLoader().load("assets/meta/multi/texture/3.png")}
+            "colorTexture": {value: texture}
         };
 
         this.uniforms.resolution = {type: 'v2', value: new THREE.Vector2(this.w, this.h)};
@@ -627,24 +637,18 @@ class MultiScene {
         });
     }
     scroll_timer_stop() {
-        $.doTimeout('loopx');
-        $.doTimeout('loopy');
-        $.doTimeout('loopz');
+        $.doTimeout('loopc');
     }
 
     scroll_step_done(coord, curve) {
         if (Math.abs(this.camera.position[coord] - curve[coord]) > 1) {
             let tmp = (this.camera.position[coord] > curve[coord]) ? -1 : 1;
-            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 10)) {
-                curve[coord] += (this.scroll_dist * 2) * tmp * (-1);
+            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 5)) {
+                curve[coord] += (this.scroll_dist * 3) * tmp * (-1);
             }
-            this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 10) * tmp;
-            if (this.camera.position.x < 980) {
-                this.glitchPass.goWild = false;
-            }
-            if (this.camera.position.x < 100) {
-                this.glitchPass.goWild = true;
-            }
+            this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 5) * tmp;
+
+            //this.glitchPass.goWild = (this.camera.position.x < 15 || this.camera.position.x > 995) ? true : false;
             if (this.camera.position.x < 4) { //проверка на окончание прокрутки
                 this.refresh();
                 return false;
@@ -655,11 +659,11 @@ class MultiScene {
         }
     }
 
-    scroll_do(coord, curve) {
+    scroll_do(curve) {
         let self = this;
-        $.doTimeout('loop' + coord);
-        $.doTimeout('loop' + coord, 1, function () {
-            return self.scroll_step_done(coord, curve);
+        $.doTimeout('loopc');
+        $.doTimeout('loopc', 1, function () {
+            return Boolean(self.scroll_step_done('x', curve) + self.scroll_step_done('y', curve) + self.scroll_step_done('z', curve));
         });
     }
 
@@ -683,9 +687,7 @@ class MultiScene {
         this.rotate_scene(delta);
         this.step = (this.step < 0) ? 0 : this.step;
         let curve_coord = this.spline.getPoint(this.step / 600);
-        this.scroll_do('y', curve_coord);
-        this.scroll_do('z', curve_coord);
-        this.scroll_do('x', curve_coord);
+        this.scroll_do(curve_coord);
         this.uniforms[ "color" ].value.offsetHSL(0.005, 0, 0);
         this.scroll_dist = this.speed_in_end(5);
         if (!this.json[this.sname]['animation']) {
@@ -771,7 +773,7 @@ $('#play').click(function () {
     } else {
         sauto = true;
         $('#play').addClass("auto_scroll_on");
-        $.doTimeout('a_scroll', 200, function () {
+        $.doTimeout('a_scroll', 100, function () {
             mScene.on_wheel();
             return true;
         });
