@@ -13,7 +13,7 @@ import { Reflector } from '../../three/jsm/Reflector.js';
 
 import { EffectComposer } from '../../three/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from '../../three/jsm/postprocessing/RenderPass.js';
-import { GlitchPass } from '../../three/jsm/postprocessing/GlitchPass.js';
+//import { GlitchPass } from '../../three/jsm/postprocessing/GlitchPass.js';
 import { UnrealBloomPass } from '../../three/jsm/postprocessing/UnrealBloomPass.js';
 import { AfterimagePass } from '../../three/jsm/postprocessing/AfterimagePass.js';
 import { BokehPass } from '../../three/jsm/postprocessing/BokehPass.js';
@@ -29,8 +29,6 @@ class ResourceTracker {
             return resource;
         }
 
-        // handle children and when material is an array of materials or
-        // uniform is array of textures
         if (Array.isArray(resource)) {
             resource.forEach(resource => this.track(resource));
             return resource;
@@ -44,13 +42,11 @@ class ResourceTracker {
             this.track(resource.material);
             this.track(resource.children);
         } else if (resource instanceof THREE.Material) {
-            // We have to check if there are any textures on the material
             for (const value of Object.values(resource)) {
                 if (value instanceof THREE.Texture) {
                     this.track(value);
                 }
             }
-            // We also have to check if any uniforms reference textures or arrays of textures
             if (resource.uniforms) {
                 for (const value of Object.values(resource.uniforms)) {
                     if (value) {
@@ -68,22 +64,75 @@ class ResourceTracker {
     untrack(resource) {
         this.resources.delete(resource);
     }
+
+    disposeNode(node) {
+        if (node.geometry) {
+            node.geometry.dispose();
+        }
+        if (node.material) {
+            var materialArray;
+            if (node.material instanceof THREE.MeshFaceMaterial || node.material instanceof THREE.MultiMaterial) {
+                materialArray = node.material.materials;
+            } else if (node.material instanceof Array) {
+                materialArray = node.material;
+            }
+            if (materialArray) {
+                materialArray.forEach(function (mtrl, idx) {
+                    if (mtrl.map)
+                        mtrl.map.dispose();
+                    if (mtrl.lightMap)
+                        mtrl.lightMap.dispose();
+                    if (mtrl.bumpMap)
+                        mtrl.bumpMap.dispose();
+                    if (mtrl.normalMap)
+                        mtrl.normalMap.dispose();
+                    if (mtrl.specularMap)
+                        mtrl.specularMap.dispose();
+                    if (mtrl.envMap)
+                        mtrl.envMap.dispose();
+                    mtrl.dispose();
+                });
+            } else {
+                if (node.material.map)
+                    node.material.map.dispose();
+                if (node.material.lightMap)
+                    node.material.lightMap.dispose();
+                if (node.material.bumpMap)
+                    node.material.bumpMap.dispose();
+                if (node.material.normalMap)
+                    node.material.normalMap.dispose();
+                if (node.material.specularMap)
+                    node.material.specularMap.dispose();
+                if (node.material.envMap)
+                    node.material.envMap.dispose();
+                node.material.dispose();
+            }
+        }
+        if (node.dispose) {
+            node.dispose();
+        }
+    }
+
     dispose() {
+        for(let i = 0; i < mScene.scene.children.length; i++){
+            this.disposeNode(mScene.scene.children[i]);
+            mScene.scene.remove(mScene.scene.children[i]);
+        }
         for (const resource of this.resources) {
 
             if (resource instanceof THREE.Object3D) {
                 if (resource.parent) {
                     resource.parent.remove(resource);
                 }
-                if(Boolean(resource.material)){
+                if (Boolean(resource.material)) {
                     resource.material.dispose();
                     resource.remove(resource.material);
                 }
-                if(Boolean(resource.geometry)){
+                if (Boolean(resource.geometry)) {
                     resource.geometry.dispose();
                     resource.remove(resource.geometry);
                 }
-                if(Boolean(resource.texture)){
+                if (Boolean(resource.texture)) {
                     resource.texture.dispose();
                     resource.remove(resource.texture.geometry);
                 }
@@ -94,9 +143,25 @@ class ResourceTracker {
         }
         this.resources.clear();
         mScene.renderer.dispose();
-        
-        mScene.afterimagePass.textureComp.dispose();
-        mScene.afterimagePass.textureOld.dispose();
+
+        this.disposeNode(mScene.afterimagePass);
+        for (let key in mScene.afterimagePass) {
+            this.disposeNode(mScene.afterimagePass[key]);
+        }
+
+        this.disposeNode(mScene.bloomPass);
+        for (let key in mScene.bloomPass) {
+            this.disposeNode(mScene.bloomPass[key]);
+        }
+
+        for (let key in mScene.composer) {
+            this.disposeNode(mScene.composer[key]);
+        }
+
+        for (let key in mScene.renderer) {
+            this.disposeNode(mScene.renderer[key]);
+        }
+        this.disposeNode(mScene.cMirror);
     }
 }
 
@@ -231,8 +296,6 @@ class MultiScene {
         if (this.scene_id === 1) {
             this.composer = this.track(new EffectComposer(this.renderer));
             this.composer.addPass(new RenderPass(this.scene, this.camera));
-//            this.glitchPass = this.track(new GlitchPass());
-//            this.composer.addPass(this.glitchPass);
             this.bloomPass = this.track(new UnrealBloomPass(new THREE.Vector2(this.w, this.h), 1.5, 0.4, 0.85));
             this.bloomPass.threshold = 0;
             this.bloomPass.strength = 1;
@@ -241,7 +304,6 @@ class MultiScene {
             this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
         }
-        //this.glitchPass.goWild = false;
     }
 
     after_post() {
@@ -268,11 +330,9 @@ class MultiScene {
         this.renderer.setSize(this.w, this.h);
         this.composer.setSize(this.w, this.h);
         this.renderer.physicallyCorrectLights = true;
-
         this.set_path();
         this.extra();
         this.init_scene(this.scenes[ 'Scene' ]);
-        
         this.add_center_mirror();
     }
 
@@ -347,26 +407,12 @@ class MultiScene {
     init_scene(sceneInfo) {
         let fog = this.json[this.sname]['fog'];
         this.scene.fog = this.track(new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far));
-        this.scene.add(this.camera);
 
         let ambient = this.track(new THREE.AmbientLight(this.json[this.sname]['ambient']));
         this.scene.add(ambient);
         let lgt = this.json[this.sname]['light'];
         let light = this.track(new THREE.HemisphereLight(lgt.sky, lgt.color, lgt.power));
         this.scene.add(light);
-        let spotlight;
-        let spt = this.json[this.sname]['spot'];
-        spotlight = this.track(new THREE.SpotLight(new THREE.Color(spt.color), 1));
-        spotlight.position.set(spt['pos-x'], spt['pos-y'], spt['pos-z']);
-        spotlight.angle = spt['angle'];
-        spotlight.penumbra = spt['penumbra'];
-        spotlight.intensity = spt['intensity'];
-        spotlight.decay = spt['decay'];
-        spotlight.castShadow = spt['castShadow'];
-        spotlight.shadow.bias = 0.001;
-        spotlight.shadow.mapSize.width = this.w;
-        spotlight.shadow.mapSize.height = this.h;
-        this.scene.add(spotlight);
 
         this.renderer.shadowMap.enabled = true; //?
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -387,15 +433,8 @@ class MultiScene {
     animate() {
         requestAnimationFrame(mScene.animate);
         mScene.controls.update();
-        
-//        if (mScene.json[mScene.sname]['animation']) {
-//            mScene.mixer.update(mScene.clock.getDelta());
-//        }
-        
         mScene.render();
         mScene.composer.render();
-        //mScene.renderer.render(mScene.scene, mScene.camera);
-        
     }
 
     figure_scroll_rotate(d) {
@@ -444,7 +483,6 @@ class MultiScene {
                 }
             });
         }
-        this.cMirror.rotation.x += 0.01;
     }
 
     render() {
@@ -520,18 +558,16 @@ class MultiScene {
         }));
     }
     add_center_mirror() {
-        if (this.scene_id === 1) {
-            var mirrorGeometry = this.track(new THREE.IcosahedronBufferGeometry(40));
-            this.cMirror = this.track(new Reflector(mirrorGeometry, {
-                clipBias: 0.05,
-                textureWidth: this.w * window.devicePixelRatio,
-                textureHeight: this.h * window.devicePixelRatio,
-                color: 0x777777,
-                recursion: 1
-            }));
-            this.cMirror.rotation.y = 90;
-            this.cMirror.position.y = 10;
-        }
+        this.mirrorGeometry = this.track(new THREE.IcosahedronBufferGeometry(40));
+        this.cMirror = this.track(new Reflector(this.mirrorGeometry, {
+            clipBias: 0.05,
+            textureWidth: this.w * window.devicePixelRatio,
+            textureHeight: this.h * window.devicePixelRatio,
+            color: 0x777777,
+            recursion: 1
+        }));
+        this.cMirror.rotation.y = 90;
+        this.cMirror.position.y = 10;
         this.scene.add(this.cMirror);
     }
 
@@ -539,7 +575,6 @@ class MultiScene {
         this.mir_wal = [];
         for (let j = 0; j < 3; j++) {
             for (let i = 0; i < 3; i++) {
-
                 if ((i !== 0) || (j !== 1)) {
                     let geometry = this.track(new THREE.BoxGeometry(1, size_z, size_y));
                     this.mir_wal[i] = this.track(new Reflector(geometry, {
@@ -557,7 +592,7 @@ class MultiScene {
                     this.scene.add(this.mir_wal[i]);
                 }
             }
-    }
+        }
     }
 
     mirrors_custom() {
@@ -594,7 +629,6 @@ class MultiScene {
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
         var material = this.track(new THREE.PointsMaterial({color: 0x888888}));
         var points = this.track(new THREE.Points(geometry, material));
-
         this.scene.add(points);
     }
 
@@ -612,17 +646,13 @@ class MultiScene {
     }
 
     add_shader() {
-
         let texture = this.track(new THREE.TextureLoader().load("assets/meta/multi/texture/3.png"));
-
         this.uniforms = {
             "amplitude": {value: 1.0},
             "color": {value: new THREE.Color(0xff2200)},
             "colorTexture": {value: texture}
         };
-
         this.uniforms.resolution = {type: 'v2', value: new THREE.Vector2(this.w, this.h)};
-
         this.uniforms[ "colorTexture" ].value.wrapS = this.uniforms[ "colorTexture" ].value.wrapT = THREE.RepeatWrapping;
         this.shaderMaterial = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
@@ -630,7 +660,6 @@ class MultiScene {
             fragmentShader: document.getElementById('fragmentshader').textContent
         });
         this.shader_speed = 0.001;
-
         this.shaderGrad = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
             fragmentShader: document.getElementById('fragShader').textContent
@@ -647,8 +676,6 @@ class MultiScene {
                 curve[coord] += (this.scroll_dist * 3) * tmp * (-1);
             }
             this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 5) * tmp;
-
-            //this.glitchPass.goWild = (this.camera.position.x < 15 || this.camera.position.x > 995) ? true : false;
             if (this.camera.position.x < 4) { //проверка на окончание прокрутки
                 this.refresh();
                 return false;
@@ -693,7 +720,6 @@ class MultiScene {
         if (!this.json[this.sname]['animation']) {
             this.mixer.update(curve_coord.x / 2000);
         }
-
         this.scroll_for_object();
     }
 
@@ -751,8 +777,6 @@ $('#loader').on('touchmove', function (e) {
     mScene.mob_delta = (currentY > lastY) ? -0.05 : 0.05;
     lastY = currentY;
     $('#loader').trigger('wheel');
-//    var currentX = e.originalEvent.touches[0].clientX; крутить по Х для телефона
-//    mScene.cursor_move(currentX, h_fmob/2);
 });
 
 
