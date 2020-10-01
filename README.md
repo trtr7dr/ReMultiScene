@@ -6,3 +6,4 @@
 [dotimeout](https://github.com/cowboy/jquery-dotimeout) &mdash;
 
 Пример: http://meta.sacri.ru/
+

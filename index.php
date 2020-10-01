@@ -9,32 +9,59 @@
         <link rel="stylesheet" href="meta.css">
         <link rel="stylesheet" href="mmeta.css">
     </head>
-    <body >
+    <body style="margin: 0; height: 100vh">
+
+        <div class="resol">
+            <div class="form-group sci-fi">
+                <div class="selector width-per-item">
+                    <div class="selection blue" onclick="res_loc(1)">Low Res</div>
+                    <div class="selection yellow" onclick="res_loc(2)">Medium Res</div>
+                    <div class="selection red" onclick="res_loc(3)">Hi Res</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="play">
+            <img src="assets/meta/multi/play.svg" width="22px">
+        </div>
+        <div id="mute">
+            <img src="assets/meta/multi/unmute.svg" id="sound_img" width="22px">
+        </div>
+        <div class="mob_help">
+            <img src="assets/meta/multi/drag.svg" width="22px">
+        </div>
 
         <div id="loader">
+
+            <div class="controls">
+
+                <div class="incon">
+                    <div class="instr">
+                        <img src="assets/click.svg" width="20px">
+                        Click
+                    </div>
+                    <div class="instr">
+                        <img src="assets/scroll.svg" width="20px">
+                        Scroll
+                    </div>
+                    <div class="instr">
+                        <img src="assets/scroll_all.svg" width="20px">
+                        Move
+                    </div>
+                </div>
+            </div>
+
             <img src="assets/meta/multi/load.svg" id="preload">
-            <div id="play">
-                <img src="assets/meta/multi/play.svg" width="40px">
-            </div>
-            <div id="mute">
-                <img src="assets/meta/multi/unmute.svg" id="sound_img" width="40px">
-            </div>
-            <div id="wsda">
-                <img src="assets/meta/multi/keys.png" width="100px">
-            </div>
-            <div class="mob_help">
-                <img src="assets/meta/multi/drag.svg" width="40px">
-            </div>
+            <img src="assets/dis.png" id="dis">
 
             <div id="container" ></div>
         </div>
 
         <div class="container">
             <div class="col-md-12" id="planes">
-                
+
             </div>
         </div>
-
 
         <script type="x-shader/x-vertex" id="vertexshader">
 
@@ -67,7 +94,6 @@
             }
         </script>
 
-
         <script type="x-shader/x-fragment" id="fragmentshader">
 
             varying vec3 vNormal;
@@ -92,11 +118,7 @@
 
         </script>
 
-
-
-
         <script id="nfShader" type="x-shader/x-fragment">
-
             precision highp float;
 
             varying vec2 vUv;
@@ -123,7 +145,6 @@
             d = sin(time * 5.0)*0.5 + 1.5; // offset
             vec2 p = gl_FragCoord.xy;
 
-            // simple sobel edge detection
             float gx = 0.0;
             gx += -1.0 * lookup(p, -1.0, -1.0);
             gx += -2.0 * lookup(p, -1.0,  0.0);
@@ -148,14 +169,8 @@
 
             gl_FragColor = col;
             }
-
-
-
-
-
         </script>
         <script id="nShader" type="x-shader/x-vertex">
-
             varying vec2 vUv;
 
             void main() {
@@ -164,22 +179,36 @@
             gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
             }
-
-
         </script>
-
-
 
         <script src="js/jquery-3.2.1.min.js"></script>
         <script src="js/jquery.ba-dotimeout.min.js"></script>
-
         <script src="js/Pizzicato.min.js"></script>
-
         <script src="js/json/mjson.js"></script>
-
         <script src="js/meta/HTMLControlls.js"></script>
         <script src="js/meta/AudioControlls.js"></script>
         <script src="js/meta/MultiScene.js" type="module"></script>
+
+        <!-- Yandex.Metrika counter -->
+        <script type="text/javascript" >
+                            (function (m, e, t, r, i, k, a) {
+                                m[i] = m[i] || function () {
+                                    (m[i].a = m[i].a || []).push(arguments)
+                                };
+                                m[i].l = 1 * new Date();
+                                k = e.createElement(t), a = e.getElementsByTagName(t)[0], k.async = 1, k.src = r, a.parentNode.insertBefore(k, a)
+                            })
+                                    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+                            ym(57451759, "init", {
+                                clickmap: true,
+                                trackLinks: true,
+                                accurateTrackBounce: true,
+                                webvisor: true
+                            });
+        </script>
+        <noscript><div><img src="https://mc.yandex.ru/watch/57451759" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+        <!-- /Yandex.Metrika counter -->
 
     </body>
 </html>

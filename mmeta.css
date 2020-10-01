@@ -103,14 +103,14 @@ canvas{
 }
 
 #play{
+    top: 13px;
     position: absolute;
     z-index: 2000;
-    top: 35px;
-    right: 22px;
-    background: white;
+        right: 14px;
+    background: rgba(91, 150, 213, 0.2) !important;
+    border-radius: 3px;
+    border: 1px solid #5b96d5;
     padding: 5px;
-    border-radius: 0px 0 10px 10px;
-    box-shadow: -2px 2px 11px black;
     opacity: 0;
     webkit-transition:all .2s linear;
     -moz-transition:all .2s linear;
@@ -127,16 +127,19 @@ canvas{
     background: #bebebe !important;
 }
 
+#mute img, div#play img {
+    filter: invert(1);
+}
 
 #mute {
+    top: 13px;
+    border-radius: 3px;
     position: absolute;
     z-index: 2000;
-    top: 35px;
-    right: 80px;
-    background: white;
+        right: 62px;
+        background: rgba(91, 150, 213, 0.2) !important;
+    border: 1px solid #5b96d5;
     padding: 5px;
-    border-radius: 0px 0 10px 10px;
-    box-shadow: -2px 2px 11px black;
     opacity: 0;
     webkit-transition:all .2s linear;
     -moz-transition:all .2s linear;
@@ -144,14 +147,43 @@ canvas{
     transition:all .2s linear;
 }
 
+.controls {
+    opacity: 0;
+    z-index: 2000;
+    background: white;
+    position: absolute;
+    padding-top: 4px;
+    bottom: 13px;
+    right: 13px;
+    padding: 15px;
+    text-align: left;
+    line-height: 30px;
+    border-radius: 3px;
+    webkit-transition:all .2s linear;
+    -moz-transition:all .2s linear;
+    -o-transition:all .2s linear;
+    transition:all .2s linear;
+}
 
-@media only screen and (max-width:800px){
-    div#play {
-        top: 59px;
-        right: 10px;
+.controls:hover{
+    opacity: 1 !important;
+}
+
+@media only screen and (max-width:540px){
+    #mute {
+        top: 63px;
+        right: 13px;
     }
-    div#mute {
-        top: 59px;
-        right: 70px;
+}
+
+@media only screen and (max-width:500px){
+    #play {
+        top: 13px;
     }
+    #mute {
+            top: 64px;
+        right: 13px;
+    }
+    .selector {
+    display: block;}
 }

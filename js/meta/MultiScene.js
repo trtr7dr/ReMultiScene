@@ -177,6 +177,7 @@ class MultiScene {
         this.delta = Date.now();
         this.then = Date.now();
         this.interval = 1000 / 30;
+        this.res_param = HTMLControlls.res_param_get();
     }
 
     set_scenes(id) {
@@ -210,8 +211,8 @@ class MultiScene {
         this.mob_delta = 0;
         this.clock = new THREE.Clock();
         this.container = document.getElementById('container');
-        this.w = this.container.offsetWidth;
-        this.h = this.container.offsetHeight;
+        this.w = this.container.offsetWidth / this.res_param;
+        this.h = this.container.offsetHeight / this.res_param;
 
         this.step = 0;
         this.scroll_dist = 5;
@@ -787,6 +788,9 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phon
     setTimeout(HTMLControlls.drop_wsda, 15000);
 }
 
+setTimeout(HTMLControlls.controls, 15000);
+HTMLControlls.res_check();
+
 var sauto = false;
 
 $('#play').click(function () {
@@ -805,7 +809,7 @@ $('#play').click(function () {
 });
 
 $("#loader").mousemove(function (event) {
-    mScene.cursor_move(event.clientX, event.clientY);
+    mScene.cursor_move(event.clientX/mScene.res_param, event.clientY/mScene.res_param);
 });
 
 $("#loader").click(function ( ) {
