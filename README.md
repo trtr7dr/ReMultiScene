@@ -5,7 +5,7 @@
 [jquery](https://github.com/jquery/jquery) &mdash;
 [dotimeout](https://github.com/cowboy/jquery-dotimeout) &mdash;
 
-Пример: http://meta.sacri.ru/
+Пример: http://chrome.sacri.ru/
 
 
 ## Использование
