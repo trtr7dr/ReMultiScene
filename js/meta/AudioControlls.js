@@ -35,12 +35,12 @@ $('#mute').click(function () {
     if(audio){
         audio = false;
         AudioControlls.pause();
-        $('#sound_img').attr('src', 'assets/meta/multi/unmute.svg');
+        $('#sound_img').attr('src', 'assets/unmute.png');
     }else{
         audio = true;
         AudioControlls.play();
-        $('#sound_img').attr('src', 'assets/meta/multi/mute.svg');
+        $('#sound_img').attr('src', 'assets/mute.png');
     }
 });
 
-AudioControlls.init('assets/meta/multi/m/cyberpunk-trailer_by_alchemy-of-sound_preview.mp3');
+AudioControlls.init('assets/Fatal-Свобода_внутри_пустоты.mp3');

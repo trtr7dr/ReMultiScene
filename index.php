@@ -2,38 +2,80 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>REMULT</title>
-        <meta name="description" value="REMULT">
-        <meta name="keywords" valeu="REMULT">
+        <title>MScene</title>
+        <meta name="description" value="MScene">
+        <meta name="keywords" valeu="MScene">
         <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
         <link rel="stylesheet" href="meta.css">
         <link rel="stylesheet" href="mmeta.css">
     </head>
-    <body >
+    <body style="margin: 0; height: 100vh">
+
+        <div class="resol">
+            <div class="form-group sci-fi">
+                <div class="selector width-per-item">
+                    <div class="selection blue" onclick="res_loc(1)"><img src="assets/1.png" width="48px"></div>
+                    <div class="selection yellow" onclick="res_loc(2)"><img src="assets/2.png" width="48px"></div>
+                    <div class="selection red" onclick="res_loc(3)"><img src="assets/3.png" width="48px"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="play">
+            <img src="assets/play.png" width="42px">
+        </div>
+        <div id="mute">
+            <img src="assets/unmute.png" id="sound_img" width="42px">
+        </div>
 
         <div id="loader">
-            <img src="assets/meta/multi/load.svg" id="preload">
-            <div id="play">
-                <img src="assets/meta/multi/play.svg" width="40px">
-            </div>
-            <div id="mute">
-                <img src="assets/meta/multi/unmute.svg" id="sound_img" width="40px">
-            </div>
-            <div id="wsda">
-                <img src="assets/meta/multi/keys.png" width="100px">
-            </div>
-            <div class="mob_help">
-                <img src="assets/meta/multi/drag.svg" width="40px">
-            </div>
+
+            
+            <img src="assets/load.gif" id="preload">
+            <img src="assets/dis.png" id="dis">
 
             <div id="container" ></div>
         </div>
 
         <div class="container">
-            <div class="col-md-12" id="planes">
-                
+            <div id="promp">
+                <h1>MultiScene</h1>
+                <p>
+                    <a href="https://gloagent.ru">Gloagent</a>
+                <p>
+
             </div>
         </div>
+
+        <video width="0" height="0" id="v1" autoplay="" muted="" loop="" style="display: none">
+            <source src="assets/models/media/old.mp4" type='video/mp4'>
+            Тег video не поддерживается вашим браузером. 
+        </video>
+        <video width="0" height="0" id="v2" autoplay="" muted="" loop="" style="display: none">
+            <source src="assets/models/media/vanitas.mp4" type='video/mp4'>
+            Тег video не поддерживается вашим браузером. 
+        </video>
+        
+        <video width="0" height="0" id="i1" autoplay="" muted="" loop="" style="display: none">
+            <source src="assets/scroll.mp4" type='video/mp4'>
+            Тег video не поддерживается вашим браузером. 
+        </video>
+        
+        <video width="0" height="0" id="i2" autoplay="" muted="" loop="" style="display: none">
+            <source src="assets/audio.mp4" type='video/mp4'>
+            Тег video не поддерживается вашим браузером. 
+        </video>
+        
+        <video width="0" height="0" id="i3" autoplay="" muted="" loop="" style="display: none">
+            <source src="assets/click.mp4" type='video/mp4'>
+            Тег video не поддерживается вашим браузером. 
+        </video>
+
+        
+        <video width="0" height="0" id="i4" autoplay="" muted="" loop="" style="display: none">
+            <source src="assets/button.mp4" type='video/mp4'>
+            Тег video не поддерживается вашим браузером. 
+        </video>
 
 
         <script type="x-shader/x-vertex" id="vertexshader">
@@ -67,7 +109,6 @@
             }
         </script>
 
-
         <script type="x-shader/x-fragment" id="fragmentshader">
 
             varying vec3 vNormal;
@@ -92,11 +133,7 @@
 
         </script>
 
-
-
-
         <script id="nfShader" type="x-shader/x-fragment">
-
             precision highp float;
 
             varying vec2 vUv;
@@ -123,7 +160,6 @@
             d = sin(time * 5.0)*0.5 + 1.5; // offset
             vec2 p = gl_FragCoord.xy;
 
-            // simple sobel edge detection
             float gx = 0.0;
             gx += -1.0 * lookup(p, -1.0, -1.0);
             gx += -2.0 * lookup(p, -1.0,  0.0);
@@ -148,14 +184,8 @@
 
             gl_FragColor = col;
             }
-
-
-
-
-
         </script>
         <script id="nShader" type="x-shader/x-vertex">
-
             varying vec2 vUv;
 
             void main() {
@@ -164,22 +194,38 @@
             gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
             }
-
-
         </script>
 
-
-
+        
+        <script src="js/Pizzicato.min.js"></script>
+        
         <script src="js/jquery-3.2.1.min.js"></script>
         <script src="js/jquery.ba-dotimeout.min.js"></script>
-
-        <script src="js/Pizzicato.min.js"></script>
-
         <script src="js/json/mjson.js"></script>
-
         <script src="js/meta/HTMLControlls.js"></script>
         <script src="js/meta/AudioControlls.js"></script>
         <script src="js/meta/MultiScene.js" type="module"></script>
+
+        <!-- Yandex.Metrika counter -->
+        <script type="text/javascript" >
+                        (function (m, e, t, r, i, k, a) {
+                            m[i] = m[i] || function () {
+                                (m[i].a = m[i].a || []).push(arguments)
+                            };
+                            m[i].l = 1 * new Date();
+                            k = e.createElement(t), a = e.getElementsByTagName(t)[0], k.async = 1, k.src = r, a.parentNode.insertBefore(k, a)
+                        })
+                                (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+                        ym(57451759, "init", {
+                            clickmap: true,
+                            trackLinks: true,
+                            accurateTrackBounce: true,
+                            webvisor: true
+                        });
+        </script>
+        <noscript><div><img src="https://mc.yandex.ru/watch/57451759" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+        <!-- /Yandex.Metrika counter -->
 
     </body>
 </html>

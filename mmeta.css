@@ -8,6 +8,8 @@ and open the template in the editor.
     Author     : glo-agent
 */
 
+@font-face{font-family:"Proxima";src:url("/assets/Proxima Nova.ttf");}
+
 canvas {
     /*            background: url(models/gltf/Monster/glTF/0.jpg);*/
     background-size: cover;
@@ -103,14 +105,11 @@ canvas{
 }
 
 #play{
+    top: 13px;
     position: absolute;
     z-index: 2000;
-    top: 35px;
-    right: 22px;
-    background: white;
+        right: 14px;
     padding: 5px;
-    border-radius: 0px 0 10px 10px;
-    box-shadow: -2px 2px 11px black;
     opacity: 0;
     webkit-transition:all .2s linear;
     -moz-transition:all .2s linear;
@@ -127,16 +126,16 @@ canvas{
     background: #bebebe !important;
 }
 
+#mute img, div#play img {
+}
 
 #mute {
+    top: 13px;
+    border-radius: 3px;
     position: absolute;
     z-index: 2000;
-    top: 35px;
-    right: 80px;
-    background: white;
+        right: 80px;
     padding: 5px;
-    border-radius: 0px 0 10px 10px;
-    box-shadow: -2px 2px 11px black;
     opacity: 0;
     webkit-transition:all .2s linear;
     -moz-transition:all .2s linear;
@@ -144,14 +143,83 @@ canvas{
     transition:all .2s linear;
 }
 
+.controls {
+    opacity: 0;
+    z-index: 2000;
+    position: absolute;
+    padding-top: 4px;
+    bottom: 13px;
+    width: 40%;
+    left: 30%;
+    padding: 15px;
+    text-align: left;
+    line-height: 30px;
+    border-radius: 3px;
+    webkit-transition: all .2s linear;
+    -moz-transition: all .2s linear;
+    -o-transition: all .2s linear;
+    transition: all .2s linear;
+}
+.controls img {
+    height: 200px;
+    object-fit: cover;
+}
+.controls:hover{
+    opacity: 1 !important;
+}
+h1 {
+    color: white;
+    margin-bottom: 0;
+        font-size: 90px;
+}
+div#promp p{
+	margin-top: 0;
+}
+div#promp {
+	opacity: 0;
+    font-family: Proxima;
+     width: 60%;
+    margin-left: 20%;
+    webkit-transition:all .2s linear;
+    -moz-transition:all .2s linear;
+    -o-transition:all .2s linear;
+    transition:all .2s linear;
+}
+div#promp a {
+    background: -webkit-gradient(to left,from(#9C27B0),to(#03A9F4));
+    background: linear-gradient(to left,#9C27B0,#03A9F4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-style: italic;
+    webkit-transition:all .2s linear;
+    -moz-transition:all .2s linear;
+    -o-transition:all .2s linear;
+    transition:all .2s linear;
+}
 
-@media only screen and (max-width:800px){
-    div#play {
-        top: 59px;
-        right: 10px;
+div#promp a:hover {
+    background: -webkit-gradient(to left,from(#9C27B0),to(#F44336));
+    background: linear-gradient(to left,#9C27B0,#F44336);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+
+@media only screen and (max-width:540px){
+    #mute {
+        top: 63px;
+        right: 13px;
     }
-    div#mute {
-        top: 59px;
-        right: 70px;
+}
+
+@media only screen and (max-width:500px){
+    #play {
+        top: 13px;
     }
+    #mute {
+            top: 64px;
+        right: 13px;
+    }
+    .selector {
+    display: block;}
 }

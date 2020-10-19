@@ -13,10 +13,14 @@ import { Reflector } from '../../three/jsm/Reflector.js';
 
 import { EffectComposer } from '../../three/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from '../../three/jsm/postprocessing/RenderPass.js';
-//import { GlitchPass } from '../../three/jsm/postprocessing/GlitchPass.js';
 import { UnrealBloomPass } from '../../three/jsm/postprocessing/UnrealBloomPass.js';
 import { AfterimagePass } from '../../three/jsm/postprocessing/AfterimagePass.js';
-import { BokehPass } from '../../three/jsm/postprocessing/BokehPass.js';
+import { FilmPass } from '../../three/jsm/postprocessing/FilmPass.js';
+
+
+import { ShaderPass } from '../../three/jsm/postprocessing/ShaderPass.js';
+import { LuminosityShader } from '../../three/jsm/shaders/LuminosityShader.js';
+import { SobelOperatorShader } from '../../three/jsm/shaders/SobelOperatorShader.js';
 
 import Stats from '../../three/jsm/libs/stats.module.js';
 
@@ -114,7 +118,8 @@ class ResourceTracker {
     }
 
     dispose() {
-        for(let i = 0; i < mScene.scene.children.length; i++){
+
+        for (let i = 0; i < mScene.scene.children.length; i++) {
             this.disposeNode(mScene.scene.children[i]);
             mScene.scene.remove(mScene.scene.children[i]);
         }
@@ -161,7 +166,16 @@ class ResourceTracker {
         for (let key in mScene.renderer) {
             this.disposeNode(mScene.renderer[key]);
         }
-        this.disposeNode(mScene.cMirror);
+
+        this.disposeNode(mScene.effectFilm);
+        for (let key in mScene.effectFilm) {
+            this.disposeNode(mScene.effectFilm[key]);
+        }
+
+        this.disposeNode(mScene.effectSobel);
+        for (let key in mScene.effectSobel) {
+            this.disposeNode(mScene.effectSobel[key]);
+        }
     }
 }
 
@@ -177,6 +191,7 @@ class MultiScene {
         this.delta = Date.now();
         this.then = Date.now();
         this.interval = 1000 / 30;
+        this.res_param = HTMLControlls.res_param_get();
     }
 
     set_scenes(id) {
@@ -186,10 +201,8 @@ class MultiScene {
         this.scenes = {
             Scene: {
                 name: 'Main',
-                url: 'assets/meta/multi/models/gltf/' + this.json[this.sname]['gltf'] + '.gltf',
+                url: 'assets/models/' + this.json[this.sname]['gltf'] + '.gltf',
                 cameraPos: new THREE.Vector3(start['x'], start['y'], start['z']),
-                animationTime: 4,
-                extensions: ['glTF']
             }
         };
     }
@@ -198,7 +211,7 @@ class MultiScene {
         if (this.scene_id === 1) {
             this.camera = new THREE.PerspectiveCamera(this.json[this.sname]['perspective'], this.w / this.h, 0.1, 1400);
             this.controls = new TrackballControls(this.camera, this.renderer.domElement);
-            this.controls.maxDistance = 1000;
+            this.controls.maxDistance = 1500;
             this.controls.enabled = false;
         }
         this.camera.position.x = 1000;
@@ -210,11 +223,10 @@ class MultiScene {
         this.mob_delta = 0;
         this.clock = new THREE.Clock();
         this.container = document.getElementById('container');
-        this.w = this.container.offsetWidth;
-        this.h = this.container.offsetHeight;
+        this.w = this.container.offsetWidth / this.res_param;
+        this.h = this.container.offsetHeight / this.res_param;
 
         this.step = 0;
-        this.scroll_dist = 5;
         this.lookSpeed = 0.5;
         this.view = {
             "x": 0,
@@ -303,7 +315,18 @@ class MultiScene {
             this.composer.addPass(this.bloomPass);
             this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
+
+            this.effectFilm = new FilmPass(0.35, 0.025, 648, false);
+            this.composer.addPass(this.effectFilm);
+
+            var effectGrayScale = new ShaderPass(LuminosityShader); //вариант без него
+            this.composer.addPass(effectGrayScale);
+            this.effectSobel = this.track(new ShaderPass(SobelOperatorShader));
+            this.effectSobel.uniforms[ 'resolution' ].value.x = this.w;
+            this.effectSobel.uniforms[ 'resolution' ].value.y = this.h;
+            this.composer.addPass(this.effectSobel);
         }
+        this.set_after_post(this.json[this.sname]['amsterdam']);
     }
 
     after_post() {
@@ -314,11 +337,64 @@ class MultiScene {
         }
     }
 
+    after_switch() {
+        let n = this.composer.passes[1].enabled;
+        this.composer.passes[1].enabled = (n) ? false : true;
+    }
+
+    space_rotate(v) {
+        switch (v) {
+            case 'left':
+                this.spaceship.rotation.y += 0.01;
+                break;
+            case 'right':
+                this.spaceship.rotation.y -= 0.01;
+                break;
+            case 'up':
+                this.spaceship.rotation.z += 0.01;
+                break;
+            case 'down':
+                this.spaceship.rotation.z -= 0.01;
+                break;
+        }
+    }
+
+    space_go(v) {
+        switch (v) {
+            case 'up':
+                this.spaceship.position.x -= 5;
+                this.camera.position.x -= 5;
+                break;
+            case 'right':
+                this.spaceship.position.z -= 5;
+                this.camera.position.z -= 5;
+                break;
+            case 'left':
+                this.spaceship.position.z += 5;
+                this.camera.position.z += 5;
+                break;
+
+            case 'back':
+                this.spaceship.position.x += 5;
+                this.camera.position.x += 5;
+                break;
+        }
+        if (this.camera.position.x < 10) {
+            this.end_scenes();
+        }
+    }
+
+    set_after_post(bools) {
+        this.afterimagePass.uniforms[ "damp" ].value = (bools) ? 0.96 : 0;
+    }
+
     onload() {
+        if (this.scene_id === Object.keys(this.json).length) {
+            sauto_s();
+        }
         this.figure = {
             'cubes': [],
-            'text': [],
-            'mirror': []
+            'text': []
         };
         this.render_create();
         this.camera_create();
@@ -326,6 +402,7 @@ class MultiScene {
 
         this.container.style.background = this.json[this.sname]['background'];
         this.container.style.filter = this.json[this.sname]['css']['filter'];
+        this.scroll_dist = this.json[this.sname]['speed'];
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(this.w, this.h);
         this.composer.setSize(this.w, this.h);
@@ -333,7 +410,6 @@ class MultiScene {
         this.set_path();
         this.extra();
         this.init_scene(this.scenes[ 'Scene' ]);
-        this.add_center_mirror();
     }
 
     extra() {
@@ -351,12 +427,6 @@ class MultiScene {
         if (mark.indexOf('add_text') !== -1) {
             this.add_text();
         }
-        if (mark.indexOf('mirrors_massive') !== -1) {
-            this.mirrors_massive();
-        }
-        if (mark.indexOf('add_center_mirror') !== -1) {
-            this.add_center_mirror();
-        }
         if (mark.indexOf('point_massive') !== -1) {
             this.point_massive();
         }
@@ -366,15 +436,63 @@ class MultiScene {
 
     }
 
+    add_media(obj) {
+        let video = document.getElementById('v1');
+        let texture = this.track(new THREE.VideoTexture(video));
+        var parameters = {color: 0xffffff, map: texture, wireframe: false};
+        obj[0].material = this.track(new THREE.MeshLambertMaterial(parameters));
+        video.play();
+        video = document.getElementById('v2');
+        texture = this.track(new THREE.VideoTexture(video));
+        var parameters = {color: 0xffffff, map: texture, wireframe: false};
+        obj[1].material = this.track(new THREE.MeshLambertMaterial(parameters));
+        video.play();
+        this.track(obj);
+    }
+
+    add_info(obj) {
+        let video = document.getElementById('i1');
+        let texture = this.track(new THREE.VideoTexture(video));
+        var parameters = {color: 0xffffff, map: texture, wireframe: false};
+        obj[0].material = this.track(new THREE.MeshLambertMaterial(parameters));
+        video.play();
+
+        video = document.getElementById('i2');
+        texture = this.track(new THREE.VideoTexture(video));
+        parameters = {color: 0xffffff, map: texture, wireframe: false};
+        obj[1].material = this.track(new THREE.MeshLambertMaterial(parameters));
+        video.play();
+
+        video = document.getElementById('i3');
+        texture = this.track(new THREE.VideoTexture(video));
+        parameters = {color: 0xffffff, map: texture, wireframe: false};
+        obj[2].material = this.track(new THREE.MeshLambertMaterial(parameters));
+        video.play();
+
+        video = document.getElementById('i4');
+        texture = this.track(new THREE.VideoTexture(video));
+        parameters = {color: 0xffffff, map: texture, wireframe: false};
+        obj[3].material = this.track(new THREE.MeshLambertMaterial(parameters));
+        video.play();
+
+        this.track(obj);
+    }
+
     gltf_done(gltf) {
         let object = this.track(gltf.scene);
+
+        if (this.scene_id === 1) {
+            this.add_info(object.children);
+        }
+
+        if (this.json[this.sname]['extra_func'][0] === 'media') {
+            this.add_media(object.children); //например
+        }
+
         for (let i = 0; i < object.children.length; i++) {
-            if (object.children[i].name === 'floor') {
-                object.children[i].material = this.track(this.shaderMaterial);
-            }
-            if (object.children[i].name === 'sky') {
-                object.children[i].material = this.track(this.shaderMaterial);
-            }
+//            if (object.children[i].name === 'sky') { например добавить шейдер всем обьектам с именем
+//                object.children[i].material = this.track(this.shaderMaterial);
+//            }
             this.track(object.children[i]);
         }
 
@@ -384,6 +502,9 @@ class MultiScene {
             let animation = animations[ i ];
             if (this.time) {
                 animation.duration = this.time;
+            }
+            if (!this.json[this.sname]['animation']) {
+                this.mixer.update(this.clock.getDelta());
             }
             let action = this.mixer.clipAction(animation);
             action.play();
@@ -402,6 +523,21 @@ class MultiScene {
             }, undefined, reject));
 
         });
+    }
+
+    spaceship_done(gltf) {
+        this.spaceship = this.track(gltf.scene);
+        this.spaceship.position.x = this.camera.position.x - 50;
+        this.spaceship.position.y = 0;
+        this.spaceship.position.z = 0;
+        this.add_obj(this.spaceship);
+        const material = this.track(new THREE.MeshPhongMaterial({
+            opacity: 0.4,
+            transparent: true
+        }));
+        this.spaceship.children[2].material = material;
+        this.spaceship.children[2].material.visible = false;
+
     }
 
     init_scene(sceneInfo) {
@@ -432,6 +568,9 @@ class MultiScene {
 
     animate() {
         requestAnimationFrame(mScene.animate);
+        if (mScene.json[mScene.sname]['animation']) {
+            mScene.mixer.update(mScene.clock.getDelta());
+        }
         mScene.controls.update();
         mScene.render();
         mScene.composer.render();
@@ -464,32 +603,10 @@ class MultiScene {
         }
     }
 
-    geom_anim() {
-        if (this.json[this.sname]['extra_func'].indexOf('add_cube') !== -1) {
-            this.figure.cubes.forEach((element) => {
-                element.rotation.x += element.random / 10000;
-                element.rotation.y += element.random / 10000;
-                element.rotation.z += element.random / 10000;
-            });
-        }
-        if (this.json[this.sname]['extra_func'].indexOf('add_text') !== -1) {
-            this.figure.text.forEach((element) => {
-                element.rotation.x += element.random / 2000;
-                element.rotation.y += element.random / 2000;
-                element.rotation.z += element.random / 2000;
-                element.position.y += element.random / 10;
-                if (element.position.y > 2000) {
-                    element.position.y = this.rand_int(-500, -100);
-                }
-            });
-        }
-    }
-
     render() {
-        this.geom_anim();
-        this.uniforms.resolution.value.x = window.innerWidth;
-        this.uniforms.resolution.value.y = window.innerHeight;
-        this.uniforms[ "amplitude" ].value = 2.5 * Math.sin(Math.round(+new Date / 100) * this.shader_speed);
+//        this.uniforms.resolution.value.x = window.innerWidth;
+//        this.uniforms.resolution.value.y = window.innerHeight;
+//        this.uniforms[ "amplitude" ].value = 2.5 * Math.sin(Math.round(+new Date / 100) * this.shader_speed);
     }
 
     get_step_size(filterLen, tapsPerPass, pass) {
@@ -526,6 +643,7 @@ class MultiScene {
             this.scene.add(obj);
         }
     }
+
     add_text() {
         var loader = new THREE.FontLoader();
         let self = this;
@@ -549,6 +667,7 @@ class MultiScene {
         this.scene.add(cube);
         this.figure.cubes.push(cube);
     }
+
     add_cube() {
         let loader = new THREE.TextureLoader();
         let t = Math.floor(Math.random() * Math.floor(14)) + 1;
@@ -556,19 +675,6 @@ class MultiScene {
         let txt = this.track(loader.load('assets/meta/multi/texture/' + t + '.png', function (texture) {
             self.cube_done(texture);
         }));
-    }
-    add_center_mirror() {
-        this.mirrorGeometry = this.track(new THREE.IcosahedronBufferGeometry(40));
-        this.cMirror = this.track(new Reflector(this.mirrorGeometry, {
-            clipBias: 0.05,
-            textureWidth: this.w * window.devicePixelRatio,
-            textureHeight: this.h * window.devicePixelRatio,
-            color: 0x777777,
-            recursion: 1
-        }));
-        this.cMirror.rotation.y = 90;
-        this.cMirror.position.y = 10;
-        this.scene.add(this.cMirror);
     }
 
     mirrors_massive(x = 580, y = 0, z = 0, size_y = 250, size_z = 250) {
@@ -592,7 +698,7 @@ class MultiScene {
                     this.scene.add(this.mir_wal[i]);
                 }
             }
-        }
+    }
     }
 
     mirrors_custom() {
@@ -646,7 +752,7 @@ class MultiScene {
     }
 
     add_shader() {
-        let texture = this.track(new THREE.TextureLoader().load("assets/meta/multi/texture/3.png"));
+        let texture = this.track(new THREE.TextureLoader().load("assets/3.png"));
         this.uniforms = {
             "amplitude": {value: 1.0},
             "color": {value: new THREE.Color(0xff2200)},
@@ -665,6 +771,7 @@ class MultiScene {
             fragmentShader: document.getElementById('fragShader').textContent
         });
     }
+
     scroll_timer_stop() {
         $.doTimeout('loopc');
     }
@@ -672,8 +779,8 @@ class MultiScene {
     scroll_step_done(coord, curve) {
         if (Math.abs(this.camera.position[coord] - curve[coord]) > 1) {
             let tmp = (this.camera.position[coord] > curve[coord]) ? -1 : 1;
-            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 5)) {
-                curve[coord] += (this.scroll_dist * 3) * tmp * (-1);
+            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 30)) {
+                curve[coord] += (this.scroll_dist * 5) * tmp * (-1);
             }
             this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 5) * tmp;
             if (this.camera.position.x < 4) { //проверка на окончание прокрутки
@@ -716,20 +823,13 @@ class MultiScene {
         let curve_coord = this.spline.getPoint(this.step / 600);
         this.scroll_do(curve_coord);
         this.uniforms[ "color" ].value.offsetHSL(0.005, 0, 0);
-        this.scroll_dist = this.speed_in_end(5);
         if (!this.json[this.sname]['animation']) {
             this.mixer.update(curve_coord.x / 2000);
         }
         this.scroll_for_object();
+
     }
 
-    speed_in_end(max_speed) {
-        let res = max_speed;
-        if (this.camera.position.x < 400 && this.json[this.sname]['slow_end_speed']) {
-            res = (this.camera.position.x < 200) ? (res / 4) : (res / 2);
-        }
-        return res;
-    }
     cursor_move(z, y) {
         y = this.h / 4 - y / 2;
         z = this.w / 4 - z / 2;
@@ -743,7 +843,6 @@ class MultiScene {
             this.end_scenes();
         } else {
             this.step = 0;
-            this.scroll_dist = 5;
             this.renderer.clear(true, true, true);
             this.set_scenes((this.scene_id + 1));
             this.resTracker.dispose();
@@ -751,10 +850,16 @@ class MultiScene {
             this.onload();
         }
     }
+
+    reloc() {
+        window.location = 'http://localhost/';
+    }
+
     end_scenes() {
-        mScene.resTracker.dispose();
+        $.doTimeout('a_scroll');
         HTMLControlls.endScene();
-        window.location.href = "https://sacri.ru/db";
+        setTimeout(mScene.reloc(), 10000);
+
     }
 }
 
@@ -779,39 +884,86 @@ $('#loader').on('touchmove', function (e) {
     $('#loader').trigger('wheel');
 });
 
-
-
 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
     HTMLControlls.mobileIcon();
 } else {
     setTimeout(HTMLControlls.drop_wsda, 15000);
 }
 
+setTimeout(HTMLControlls.controls, 15000);
+HTMLControlls.res_check();
+
 var sauto = false;
 
 $('#play').click(function () {
+    sautos();
+});
+
+function sautos() {
     if (sauto) {
         sauto = false;
         $.doTimeout('a_scroll');
-        $('#play').removeClass("auto_scroll_on");
+        $('#play img').attr('src', 'assets/play.png');
     } else {
         sauto = true;
-        $('#play').addClass("auto_scroll_on");
+        $('#play img').attr('src', 'assets/stop.png');
         $.doTimeout('a_scroll', 100, function () {
             mScene.on_wheel();
             return true;
         });
     }
-});
+}
+
+function sauto_s() {
+    sauto = false;
+    $.doTimeout('a_scroll');
+    $('#play img').attr('src', 'assets/play.png');
+}
 
 $("#loader").mousemove(function (event) {
-    mScene.cursor_move(event.clientX, event.clientY);
+    mScene.cursor_move(event.clientX / mScene.res_param, event.clientY / mScene.res_param);
 });
 
-$("#loader").click(function ( ) {
-    mScene.after_post();
-    HTMLControlls.rand_rotate();
-    AudioControlls.effects();
+$('body').keydown(function (event) {
+    if (event.keyCode === 49) {
+        mScene.after_post();
+        HTMLControlls.rand_rotate();
+        AudioControlls.effects();
+    }
+    if (event.keyCode === 50) {
+        mScene.after_switch();
+    }
+
+    if (event.keyCode === 37) {
+        mScene.space_rotate('left');
+    }
+    if (event.keyCode === 39) {
+        mScene.space_rotate('right');
+    }
+    if (event.keyCode === 38) {
+        mScene.space_rotate('up');
+    }
+    if (event.keyCode === 40) {
+        mScene.space_rotate('down');
+    }
+
+    if (event.keyCode === 87) {
+        mScene.space_go('up');
+    }
+    if (event.keyCode === 68) {
+        mScene.space_go('right');
+    }
+    if (event.keyCode === 65) {
+        mScene.space_go('left');
+    }
+    if (event.keyCode === 83) {
+        mScene.space_go('back');
+    }
+
+    if (event.keyCode === 83) {
+        mScene.space_go('back');
+    }
+
 });
 
 $("#dis").click(function ( ) {
