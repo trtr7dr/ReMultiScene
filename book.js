@@ -11,7 +11,7 @@ import { UnrealBloomPass } from './three/jsm/postprocessing/UnrealBloomPass.js';
 import { AfterimagePass } from './three/jsm/postprocessing/AfterimagePass.js';
 import { FilmPass } from './three/jsm/postprocessing/FilmPass.js';
 
-import { BokehPass } from './three/jsm/postprocessing/BokehPass.js'; //РЅРµС‚ РІ СЂРµСЃСѓСЂСЃС‚СЂРµРєРµСЂРµ
+import { BokehPass } from './three/jsm/postprocessing/BokehPass.js'; //нет в ресурстрекере
 
 import { OutlinePass } from './three/jsm/postprocessing/OutlinePass.js';
 
@@ -194,7 +194,6 @@ class BookScene {
     }
 
     onMouseMove(event) {
-
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
@@ -287,7 +286,6 @@ class BookScene {
     }
 
     postprocessing_create() {
-
         this.composer = this.track(new EffectComposer(this.renderer));
         this.composer.addPass(new RenderPass(this.scene, this.camera));
         this.bloomPass = this.track(new UnrealBloomPass(new THREE.Vector2(this.w, this.h), 1.5, 0.4, 0.85));
@@ -301,11 +299,7 @@ class BookScene {
         this.bloomPass.threshold = 0.9;
         this.bloomPass.strength = 0.3;
         this.bloomPass.radius = 1;
-        //this.composer.addPass(this.bloomPass);
-
-        //this.composer.addPass(this.bokehPass);
         this.composer.bokeh = this.bokehPass;
-
         this.afterimagePass = new AfterimagePass();
         this.afterimagePass.uniforms[ "damp" ].value = 0.3;
         this.afterimagePass.renderToScreen = true;
@@ -319,7 +313,6 @@ class BookScene {
         this.render_create();
         this.camera_create();
         this.postprocessing_create();
-
         this.container.style.background = this.json[this.sname]['background'];
         this.container.style.filter = this.json[this.sname]['css']['filter'];
         this.scroll_dist = this.json[this.sname]['speed'];
@@ -331,7 +324,7 @@ class BookScene {
         this.extra();
         this.init_scene(this.scenes[ 'Scene' ]);
     }
-
+    
     extra() {
     }
 
@@ -359,7 +352,6 @@ class BookScene {
                     return true;
                 }
             };
-            
             return false;
         });
     }
@@ -402,7 +394,6 @@ class BookScene {
 
     page_prev() {
         $.doTimeout('page_set', 24, function () {
-
             let flag = false;
             if (mScene.pages['page' + (mScene.page_num - 1)].position.z > -0.59) {
                 mScene.pages['page' + (mScene.page_num - 1)].position.z -= 0.1;
@@ -420,11 +411,9 @@ class BookScene {
     gltf_done(gltf) {
         let object = this.track(gltf.scene);
         this.gltf_data = gltf.scene.children;
-
         if (this.json[this.sname]['extra_func'][0] === 'media') {
             this.add_media(object.children);
         }
-
         let animations = gltf.animations;
         this.mixer = this.track(new THREE.AnimationMixer(object));
         for (let i = 0; i < animations.length; i++) {
@@ -444,22 +433,18 @@ class BookScene {
 
         this.pagelength = 0;
         for (let i = 0; i < object.children.length; i++) {
-
             if (object.children[i].name.indexOf('page') !== -1) {
                 this.pages[object.children[i].name] = object.children[i];
                 this.pagelength++;
             }
-
             if (object.children[i].name.indexOf('illustration') !== -1) {
                 this.pic[object.children[i].name] = object.children[i];
                 this.pic[object.children[i].name]['num'] = object.children[i].name.replace('illustration', '');
             }
-            
             if (object.children[i].name.indexOf('kol') !== -1) {
                 this.kol[object.children[i].name] = object.children[i];
                 this.kol[object.children[i].name]['num'] = object.children[i].name.replace('kol', '');
             }
-
             this.track(object.children[i]);
         }
         this.page_change('next');
@@ -478,7 +463,6 @@ class BookScene {
     init_scene(sceneInfo) {
         let fog = this.json[this.sname]['fog'];
         this.scene.fog = this.track(new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far));
-
         let ambient = this.track(new THREE.AmbientLight(this.json[this.sname]['ambient']));
         this.scene.add(ambient);
         let lgt = this.json[this.sname]['light'];
@@ -487,11 +471,9 @@ class BookScene {
         light.position.y = 10;
         light.position.z = 10;
         this.scene.add(light);
-
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1, 100);
         directionalLight.position.set(0, 1, 0);
         this.scene.add(directionalLight);
-
         directionalLight.shadow.mapSize.width = 512; // default
         directionalLight.shadow.mapSize.height = 512; // default
         directionalLight.shadow.camera.near = 0.5; // default
@@ -547,7 +529,7 @@ class BookScene {
     }
 
     add_shader() {
-        let texture = this.track(new THREE.TextureLoader().load("1.png"));
+        let texture = this.track(new THREE.TextureLoader().load("/assets/3d/gugo/kol1.png"));
         this.uniforms = {
             "amplitude": {value: 1.0},
             "color": {value: new THREE.Color(0xff2200)},
@@ -573,7 +555,6 @@ class BookScene {
             colors.push(Math.random() * 255);
             colors.push(Math.random() * 255);
             colors.push(Math.random() * 255);
-
         }
         this.colorAttribute = new THREE.Uint8BufferAttribute(colors, 4);
         this.colorAttribute.normalized = true;
@@ -603,32 +584,45 @@ class BookScene {
         this.selectedObjects.push(object);
     }
 
-    inter_click() {
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-        let intersects = this.raycaster.intersectObjects(this.scene.children);
-        if (intersects.length > 0) {
+//    inter_click() {
+//        this.raycaster.setFromCamera(this.mouse, this.camera);
+//        let intersects = this.raycaster.intersectObjects(this.scene.children);
+//        if (intersects.length > 0) {
+//
+//        }
+//    }
 
-        }
+    rotation_object(obj, x, vector){
+        $.doTimeout('rotation_set', 24, function () {
+            let flag = false;
+            if ( (obj.rotation.x < x && vector === 1) || (obj.rotation.x > x && vector === -1) ) {
+                obj.rotation.x += 0.1 * vector;
+                obj.rotation.y += 0.1 * vector;
+                flag = true;
+            } else {
+                flag = false;
+            }
+            return flag;
+        });
+    }
+    
+    addSelectedObject(object) {
+        this.selectedObjects = [];
+        this.selectedObjects.push(object);
     }
 
     inter() {
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        let intersects = this.raycaster.intersectObjects(this.scene.children);
-        if (intersects.length > 0 && intersects[ 0 ].object.name !== 'ousia') {
-
+        let intersects = this.raycaster.intersectObjects(this.scene.children, true);
+        if (intersects.length > 0 && (intersects[ 0 ].object.name === 'illustration3')) {
             let selectedObject = intersects[ 0 ].object;
-            selectedObject.scale.set(2, 2, 2);
+            this.rotation_object(selectedObject, 2, 1);
             this.addSelectedObject(selectedObject);
-            //this.outlinePass.selectedObjects = this.selectedObjects;
-            HTMLControlls.outline(true);
-
         } else {
             if (this.selectedObjects) {
                 for (let i = 0; i < Object.keys(this.selectedObjects).length; i++) {
-                    this.selectedObjects[i].scale.set(1, 1, 1);
+                    this.rotation_object(this.selectedObjects[i], 0, -1);
                 }
-                //selectedObject.scale.set(1, 1, 1);
-                HTMLControlls.outline(false);
             }
         }
     }
@@ -640,7 +634,6 @@ class BookScene {
     }
 
     path_camera_move(x, y, z) {
-
         this.controls.target = new THREE.Vector3(x, y, z);
     }
 
@@ -670,10 +663,12 @@ class BookScene {
     }
 }
 
+//
+
 var json = {
     "scene1": {
         "gltf": "scene",
-        "perspective": 60, 
+        "perspective": 60,
         "background": "white",
         "ambient": "rgb(255, 255, 0)",
         'post': '',
@@ -695,15 +690,14 @@ var json = {
             "near": 10,
             "far": 1000
         },
-        'animation': true, 
+        'animation': false,
         "extra_func": [
-           'add_cube'
         ],
         "css": {
             "filter": "none"
         },
         "amsterdam": false,
-        "debug": false,
+        "debug": false, 
         'speed': 15
     }
 };
@@ -740,28 +734,8 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phon
 setTimeout(HTMLControlls.controls, 15000);
 HTMLControlls.res_check();
 
-var sauto = false;
 
-$('#play').click(function () {
-    sautos();
-});
-
-function sautos() {
-    if (sauto) {
-        sauto = false;
-        $.doTimeout('a_scroll');
-        $('#play img').attr('src', 'assets/play.png');
-    } else {
-        sauto = true;
-        $('#play img').attr('src', 'assets/stop.png');
-        $.doTimeout('a_scroll', 100, function () {
-            mScene.on_wheel();
-            return true;
-        });
-    }
-}
-
-$("#container").click(function (event) { // РѕР±СЂР°Р±РѕС‚РєР° СЃСЃС‹Р»РѕРє
+$("#container").click(function (event) { // обработка ссылок
     mScene.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mScene.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     mScene.inter_click();
@@ -789,5 +763,4 @@ $("#container").mousemove(function (event) {
     mScene.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     mScene.cursor_move(event.clientX / mScene.res_param, event.clientY / mScene.res_param);
     mScene.inter();
-
 });
