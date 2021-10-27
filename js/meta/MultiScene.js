@@ -17,7 +17,6 @@ import { UnrealBloomPass } from '../../three/jsm/postprocessing/UnrealBloomPass.
 import { AfterimagePass } from '../../three/jsm/postprocessing/AfterimagePass.js';
 import { FilmPass } from '../../three/jsm/postprocessing/FilmPass.js';
 
-
 import { ShaderPass } from '../../three/jsm/postprocessing/ShaderPass.js';
 import { LuminosityShader } from '../../three/jsm/shaders/LuminosityShader.js';
 import { SobelOperatorShader } from '../../three/jsm/shaders/SobelOperatorShader.js';
@@ -34,12 +33,10 @@ class ResourceTracker {
         if (!resource) {
             return resource;
         }
-
         if (Array.isArray(resource)) {
             resource.forEach(resource => this.track(resource));
             return resource;
         }
-
         if (resource.dispose || resource instanceof THREE.Object3D) {
             this.resources.add(resource);
         }
@@ -999,7 +996,6 @@ class MultiScene {
             }
         });
     }
-
 }
 
 var mScene = new MultiScene(json);
