@@ -192,6 +192,11 @@ class MultiScene {
         this.then = Date.now();
         this.interval = 1000 / 30;
         this.res_param = HTMLControlls.res_param_get();
+        this.lastY;
+        this.h_fmob = document.documentElement.clientHeight;
+        this.sauto = false;
+
+        this.last_scene_id = Object.keys(this.json).length;
     }
 
     set_scenes(id) {
@@ -203,6 +208,8 @@ class MultiScene {
                 name: 'Main',
                 url: 'assets/models/' + this.json[this.sname]['gltf'] + '.gltf',
                 cameraPos: new THREE.Vector3(start['x'], start['y'], start['z']),
+                animationTime: 4,
+                extensions: ['glTF']
             }
         };
     }
@@ -272,6 +279,10 @@ class MultiScene {
         this.loader = new GLTFLoader();
         this.loader.setDDSLoader(new DDSLoader());
         this.add_shader();
+        this.lisseners();
+        this.keying();
+        setTimeout(HTMLControlls.controls, 15000);
+        HTMLControlls.res_check();
     }
 
     set_path() {
@@ -316,6 +327,7 @@ class MultiScene {
             this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
 
+
             this.effectFilm = new FilmPass(0.35, 0.025, 648, false);
             this.composer.addPass(this.effectFilm);
 
@@ -325,6 +337,7 @@ class MultiScene {
             this.effectSobel.uniforms[ 'resolution' ].value.x = this.w;
             this.effectSobel.uniforms[ 'resolution' ].value.y = this.h;
             this.composer.addPass(this.effectSobel);
+
         }
         this.set_after_post(this.json[this.sname]['amsterdam']);
     }
@@ -384,17 +397,24 @@ class MultiScene {
         }
     }
 
+    ship_light() {
+        let n = this.spaceship.children[2].material.visible;
+        this.spaceship.children[2].material.visible = (n) ? false : true;
+    }
+
     set_after_post(bools) {
         this.afterimagePass.uniforms[ "damp" ].value = (bools) ? 0.96 : 0;
     }
 
     onload() {
-        if (this.scene_id === Object.keys(this.json).length) {
-            sauto_s();
+
+        if (this.scene_id === this.last_scene_id) {
+            this.sauto_s();
         }
         this.figure = {
             'cubes': [],
-            'text': []
+            'text': [],
+            'mirror': []
         };
         this.render_create();
         this.camera_create();
@@ -427,6 +447,9 @@ class MultiScene {
         if (mark.indexOf('add_text') !== -1) {
             this.add_text();
         }
+        if (mark.indexOf('mirrors_massive') !== -1) {
+            this.mirrors_massive();
+        }
         if (mark.indexOf('point_massive') !== -1) {
             this.point_massive();
         }
@@ -442,6 +465,7 @@ class MultiScene {
         var parameters = {color: 0xffffff, map: texture, wireframe: false};
         obj[0].material = this.track(new THREE.MeshLambertMaterial(parameters));
         video.play();
+
         video = document.getElementById('v2');
         texture = this.track(new THREE.VideoTexture(video));
         var parameters = {color: 0xffffff, map: texture, wireframe: false};
@@ -449,8 +473,8 @@ class MultiScene {
         video.play();
         this.track(obj);
     }
-
     add_info(obj) {
+
         let video = document.getElementById('i1');
         let texture = this.track(new THREE.VideoTexture(video));
         var parameters = {color: 0xffffff, map: texture, wireframe: false};
@@ -474,7 +498,6 @@ class MultiScene {
         parameters = {color: 0xffffff, map: texture, wireframe: false};
         obj[3].material = this.track(new THREE.MeshLambertMaterial(parameters));
         video.play();
-
         this.track(obj);
     }
 
@@ -486,13 +509,13 @@ class MultiScene {
         }
 
         if (this.json[this.sname]['extra_func'][0] === 'media') {
-            this.add_media(object.children); //например
+            this.add_media(object.children);
         }
 
         for (let i = 0; i < object.children.length; i++) {
-//            if (object.children[i].name === 'sky') { например добавить шейдер всем обьектам с именем
-//                object.children[i].material = this.track(this.shaderMaterial);
-//            }
+            if (object.children[i].name === 'sky') {
+                object.children[i].material = this.track(this.shaderMaterial);
+            }
             this.track(object.children[i]);
         }
 
@@ -513,6 +536,7 @@ class MultiScene {
         this.on_window_resize();
         this.animate();
         HTMLControlls.gltfReady();
+        this.load_spaceship();
     }
 
     load_GLTF(url) {
@@ -538,6 +562,16 @@ class MultiScene {
         this.spaceship.children[2].material = material;
         this.spaceship.children[2].material.visible = false;
 
+    }
+
+    load_spaceship() {
+        let self = this;
+        return new Promise((resolve, reject) => {
+            this.track(this.loader.load('assets/models/space.gltf', function (gltf) {
+                self.spaceship_done(gltf);
+            }, undefined, reject));
+
+        });
     }
 
     init_scene(sceneInfo) {
@@ -567,13 +601,14 @@ class MultiScene {
     }
 
     animate() {
-        requestAnimationFrame(mScene.animate);
-        if (mScene.json[mScene.sname]['animation']) {
-            mScene.mixer.update(mScene.clock.getDelta());
-        }
-        mScene.controls.update();
-        mScene.render();
-        mScene.composer.render();
+        let request = requestAnimationFrame(() => {
+            this.animate();
+            if (this.json[this.sname]['animation']) {
+                this.mixer.update(this.clock.getDelta());
+            }
+            this.controls.update();
+            this.composer.render();
+        });
     }
 
     figure_scroll_rotate(d) {
@@ -604,9 +639,6 @@ class MultiScene {
     }
 
     render() {
-//        this.uniforms.resolution.value.x = window.innerWidth;
-//        this.uniforms.resolution.value.y = window.innerHeight;
-//        this.uniforms[ "amplitude" ].value = 2.5 * Math.sin(Math.round(+new Date / 100) * this.shader_speed);
     }
 
     get_step_size(filterLen, tapsPerPass, pass) {
@@ -643,7 +675,6 @@ class MultiScene {
             this.scene.add(obj);
         }
     }
-
     add_text() {
         var loader = new THREE.FontLoader();
         let self = this;
@@ -667,7 +698,7 @@ class MultiScene {
         this.scene.add(cube);
         this.figure.cubes.push(cube);
     }
-
+    
     add_cube() {
         let loader = new THREE.TextureLoader();
         let t = Math.floor(Math.random() * Math.floor(14)) + 1;
@@ -771,7 +802,6 @@ class MultiScene {
             fragmentShader: document.getElementById('fragShader').textContent
         });
     }
-
     scroll_timer_stop() {
         $.doTimeout('loopc');
     }
@@ -797,6 +827,7 @@ class MultiScene {
         let self = this;
         $.doTimeout('loopc');
         $.doTimeout('loopc', 1, function () {
+            mScene.spaceship.position.x = mScene.camera.position.x - 50;
             return Boolean(self.scroll_step_done('x', curve) + self.scroll_step_done('y', curve) + self.scroll_step_done('z', curve));
         });
     }
@@ -811,7 +842,7 @@ class MultiScene {
         let delta;
         if (this.mobile) {
             delta = this.mob_delta;
-            this.scroll_dist = 10;
+            this.scroll_dist = 1.5;
         } else {
             e = e || window.event;
             delta = (e !== undefined) ? e.deltaY || e.detail || e.wheelDelta : 20;
@@ -827,13 +858,18 @@ class MultiScene {
             this.mixer.update(curve_coord.x / 2000);
         }
         this.scroll_for_object();
-
     }
 
     cursor_move(z, y) {
         y = this.h / 4 - y / 2;
         z = this.w / 4 - z / 2;
         this.controls.target = new THREE.Vector3(this.view.x, y, z);
+
+        if (this.spaceship) {
+            this.spaceship.position.x = this.camera.position.x - 50;
+            this.spaceship.position.y = y;
+            this.spaceship.position.z = z;
+        }
     }
 
     refresh() {
@@ -850,9 +886,8 @@ class MultiScene {
             this.onload();
         }
     }
-
     reloc() {
-        window.location = 'http://localhost/';
+        window.location = '/';
     }
 
     end_scenes() {
@@ -861,111 +896,121 @@ class MultiScene {
         setTimeout(mScene.reloc(), 10000);
 
     }
+
+    mobile_info() {
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
+            HTMLControlls.mobileIcon();
+        } else {
+            setTimeout(HTMLControlls.drop_wsda, 15000);
+        }
+    }
+
+    sauto_s() {
+        this.sauto = false;
+        $.doTimeout('a_scroll');
+        $('#play img').attr('src', 'assets/play.png');
+    }
+
+    sautos() {
+        if (this.sauto) {
+            this.sauto = false;
+            $.doTimeout('a_scroll');
+            $('#play img').attr('src', 'assets/play.png');
+        } else {
+            this.sauto = true;
+            $('#play img').attr('src', 'assets/stop.png');
+            let self = this;
+            $.doTimeout('a_scroll', 100, function () {
+                self.on_wheel();
+                return true;
+            });
+        }
+    }
+
+    lisseners() {
+        var self = this;
+        this.mobile_info();
+        
+        $('#loader').on('wheel', function (e) {
+            if (self.scene_id !== self.last_scene_id) {
+                $.doTimeout('a_scroll');
+                $('#play').removeClass("auto_scroll_on");
+                self.on_wheel();
+            }
+        });
+
+        $('#loader').on('touchmove', function (e) {
+            self.mobile = true;
+            var currentY = e.originalEvent.touches[0].clientY;
+            self.mob_delta = (currentY > this.lastY) ? -0.05 : 0.05;
+            this.lastY = currentY;
+            $('#loader').trigger('wheel');
+        });
+
+        $('#play').click(function () {
+            self.sautos();
+        });
+
+        $("#loader").mousemove(function (event) {
+            if (self.scene_id !== self.last_scene_id) {
+                self.cursor_move(event.clientX / self.res_param, event.clientY / self.res_param);
+            }
+        });
+
+        $("#loader").click(function ( ) {
+            self.ship_light();
+        });
+    }
+
+    keying() {
+        var self = this;
+        $('body').keydown(function (event) {
+            if (event.keyCode === 49) {
+                self.after_post();
+                HTMLControlls.rand_rotate();
+                AudioControlls.effects();
+            }
+            if (event.keyCode === 50) {
+                self.after_switch();
+            }
+            if (event.keyCode === 37) {
+                self.space_rotate('left');
+            }
+            if (event.keyCode === 39) {
+                self.space_rotate('right');
+            }
+            if (event.keyCode === 38) {
+                self.space_rotate('up');
+            }
+            if (event.keyCode === 40) {
+                self.space_rotate('down');
+            }
+
+            if (event.keyCode === 87) {
+                self.space_go('up');
+            }
+            if (event.keyCode === 68) {
+                self.space_go('right');
+            }
+            if (event.keyCode === 65) {
+                self.space_go('left');
+            }
+            if (event.keyCode === 83) {
+                self.space_go('back');
+            }
+
+            if (event.keyCode === 83) {
+                self.space_go('back');
+            }
+        });
+    }
+
 }
 
-// Старт событий и таймеров
 var mScene = new MultiScene(json);
 mScene.init(1);
 mScene.onload();
 
-$('#loader').on('wheel', function (e) {
-    $.doTimeout('a_scroll');
-    $('#play').removeClass("auto_scroll_on");
-    mScene.on_wheel();
-});
-
-var lastY;
-var h_fmob = document.documentElement.clientHeight;
-$('#loader').on('touchmove', function (e) {
-    mScene.mobile = true;
-    var currentY = e.originalEvent.touches[0].clientY;
-    mScene.mob_delta = (currentY > lastY) ? -0.05 : 0.05;
-    lastY = currentY;
-    $('#loader').trigger('wheel');
-});
-
-if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
-    HTMLControlls.mobileIcon();
-} else {
-    setTimeout(HTMLControlls.drop_wsda, 15000);
-}
-
-setTimeout(HTMLControlls.controls, 15000);
-HTMLControlls.res_check();
-
-var sauto = false;
-
-$('#play').click(function () {
-    sautos();
-});
-
-function sautos() {
-    if (sauto) {
-        sauto = false;
-        $.doTimeout('a_scroll');
-        $('#play img').attr('src', 'assets/play.png');
-    } else {
-        sauto = true;
-        $('#play img').attr('src', 'assets/stop.png');
-        $.doTimeout('a_scroll', 100, function () {
-            mScene.on_wheel();
-            return true;
-        });
-    }
-}
-
-function sauto_s() {
-    sauto = false;
-    $.doTimeout('a_scroll');
-    $('#play img').attr('src', 'assets/play.png');
-}
-
-$("#loader").mousemove(function (event) {
-    mScene.cursor_move(event.clientX / mScene.res_param, event.clientY / mScene.res_param);
-});
-
-$('body').keydown(function (event) {
-    if (event.keyCode === 49) {
-        mScene.after_post();
-        HTMLControlls.rand_rotate();
-        AudioControlls.effects();
-    }
-    if (event.keyCode === 50) {
-        mScene.after_switch();
-    }
-
-    if (event.keyCode === 37) {
-        mScene.space_rotate('left');
-    }
-    if (event.keyCode === 39) {
-        mScene.space_rotate('right');
-    }
-    if (event.keyCode === 38) {
-        mScene.space_rotate('up');
-    }
-    if (event.keyCode === 40) {
-        mScene.space_rotate('down');
-    }
-
-    if (event.keyCode === 87) {
-        mScene.space_go('up');
-    }
-    if (event.keyCode === 68) {
-        mScene.space_go('right');
-    }
-    if (event.keyCode === 65) {
-        mScene.space_go('left');
-    }
-    if (event.keyCode === 83) {
-        mScene.space_go('back');
-    }
-
-    if (event.keyCode === 83) {
-        mScene.space_go('back');
-    }
-
-});
-
 $("#dis").click(function ( ) {
-    window.location = 'https://gloagent.ru/category/art/znak.html';
+    window.location = '/href';
 });
