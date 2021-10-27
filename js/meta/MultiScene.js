@@ -25,9 +25,11 @@ import { SobelOperatorShader } from '../../three/jsm/shaders/SobelOperatorShader
 import Stats from '../../three/jsm/libs/stats.module.js';
 
 class ResourceTracker {
+    
     constructor() {
         this.resources = new Set();
     }
+    
     track(resource) {
         if (!resource) {
             return resource;
@@ -65,6 +67,7 @@ class ResourceTracker {
         }
         return resource;
     }
+    
     untrack(resource) {
         this.resources.delete(resource);
     }
@@ -118,7 +121,6 @@ class ResourceTracker {
     }
 
     dispose() {
-
         for (let i = 0; i < mScene.scene.children.length; i++) {
             this.disposeNode(mScene.scene.children[i]);
             mScene.scene.remove(mScene.scene.children[i]);
@@ -195,7 +197,6 @@ class MultiScene {
         this.lastY;
         this.h_fmob = document.documentElement.clientHeight;
         this.sauto = false;
-
         this.last_scene_id = Object.keys(this.json).length;
     }
 
@@ -326,11 +327,10 @@ class MultiScene {
             this.composer.addPass(this.bloomPass);
             this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
-
-
+            
             this.effectFilm = new FilmPass(0.35, 0.025, 648, false);
             this.composer.addPass(this.effectFilm);
-
+            
             var effectGrayScale = new ShaderPass(LuminosityShader); //вариант без него
             this.composer.addPass(effectGrayScale);
             this.effectSobel = this.track(new ShaderPass(SobelOperatorShader));
@@ -386,7 +386,6 @@ class MultiScene {
                 this.spaceship.position.z += 5;
                 this.camera.position.z += 5;
                 break;
-
             case 'back':
                 this.spaceship.position.x += 5;
                 this.camera.position.x += 5;
@@ -407,7 +406,6 @@ class MultiScene {
     }
 
     onload() {
-
         if (this.scene_id === this.last_scene_id) {
             this.sauto_s();
         }
@@ -456,7 +454,6 @@ class MultiScene {
         if (mark.indexOf('mirrors_custom') !== -1) {
             this.mirrors_custom();
         }
-
     }
 
     add_media(obj) {
@@ -474,7 +471,6 @@ class MultiScene {
         this.track(obj);
     }
     add_info(obj) {
-
         let video = document.getElementById('i1');
         let texture = this.track(new THREE.VideoTexture(video));
         var parameters = {color: 0xffffff, map: texture, wireframe: false};
@@ -545,7 +541,6 @@ class MultiScene {
             this.track(this.loader.load(url, function (gltf) {
                 self.gltf_done(gltf);
             }, undefined, reject));
-
         });
     }
 
@@ -561,7 +556,6 @@ class MultiScene {
         }));
         this.spaceship.children[2].material = material;
         this.spaceship.children[2].material.visible = false;
-
     }
 
     load_spaceship() {
@@ -675,6 +669,7 @@ class MultiScene {
             this.scene.add(obj);
         }
     }
+    
     add_text() {
         var loader = new THREE.FontLoader();
         let self = this;
@@ -729,7 +724,7 @@ class MultiScene {
                     this.scene.add(this.mir_wal[i]);
                 }
             }
-    }
+        }
     }
 
     mirrors_custom() {
@@ -802,6 +797,7 @@ class MultiScene {
             fragmentShader: document.getElementById('fragShader').textContent
         });
     }
+    
     scroll_timer_stop() {
         $.doTimeout('loopc');
     }
@@ -886,6 +882,7 @@ class MultiScene {
             this.onload();
         }
     }
+    
     reloc() {
         window.location = '/';
     }
@@ -985,7 +982,6 @@ class MultiScene {
             if (event.keyCode === 40) {
                 self.space_rotate('down');
             }
-
             if (event.keyCode === 87) {
                 self.space_go('up');
             }
@@ -998,7 +994,6 @@ class MultiScene {
             if (event.keyCode === 83) {
                 self.space_go('back');
             }
-
             if (event.keyCode === 83) {
                 self.space_go('back');
             }
