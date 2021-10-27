@@ -17,6 +17,7 @@ import { UnrealBloomPass } from '../../three/jsm/postprocessing/UnrealBloomPass.
 import { AfterimagePass } from '../../three/jsm/postprocessing/AfterimagePass.js';
 import { FilmPass } from '../../three/jsm/postprocessing/FilmPass.js';
 
+
 import { ShaderPass } from '../../three/jsm/postprocessing/ShaderPass.js';
 import { LuminosityShader } from '../../three/jsm/shaders/LuminosityShader.js';
 import { SobelOperatorShader } from '../../three/jsm/shaders/SobelOperatorShader.js';
@@ -24,11 +25,9 @@ import { SobelOperatorShader } from '../../three/jsm/shaders/SobelOperatorShader
 import Stats from '../../three/jsm/libs/stats.module.js';
 
 class ResourceTracker {
-    
     constructor() {
         this.resources = new Set();
     }
-    
     track(resource) {
         if (!resource) {
             return resource;
@@ -179,6 +178,31 @@ class ResourceTracker {
 }
 
 class MultiScene {
+    
+    constants() {
+        this.animationTime = 4; //скорость анимации (?)
+        this.max_distance = 1500; //максимальное удаление камеры
+        this.start_x = 1000;
+        this.spline_point = 50;
+        this.delta_spaceship_rotation = 0.01;
+        this.delta_spaceship_position = 5;
+        this.x_limit = 10; //при каком икс надо заканчивать сцену
+        this.spaceship_start_deviation = 50;
+        this.spaceship_light_opacity = 0.4;
+        this.figure_rotation_delta = 0.01;
+        this.figure_scale_delta = 0.008;
+        this.object_rotation_delta = 0.05;
+        this.points_count = 10000;
+        this.scroll_dist_mobile_factor = 1.5;
+        this.delta_scroll_def = 20;
+        this.curve_point_count = 600;
+        this.curve_animation_factor = 2000;
+        this.reloc_timer = 10000;
+        this.scroll_factor1 = 30; //параметры влияющие на плавность и скорость 
+        this.scroll_factor2 = 5;
+        this.mob_delta_factor = 0.05;
+        this.ms_upd = 100;
+    }
 
     constructor(data) {
         this.json = data;
@@ -189,13 +213,13 @@ class MultiScene {
         this.now = Date.now();
         this.delta = Date.now();
         this.then = Date.now();
-        this.interval = 1000 / 30;
         this.res_param = HTMLControlls.res_param_get();
         this.lastY;
         this.h_fmob = document.documentElement.clientHeight;
         this.sauto = false;
         this.last_scene_id = Object.keys(this.json).length;
     }
+    
 
     set_scenes(id) {
         this.scene_id = id;
@@ -206,7 +230,7 @@ class MultiScene {
                 name: 'Main',
                 url: 'assets/models/' + this.json[this.sname]['gltf'] + '.gltf',
                 cameraPos: new THREE.Vector3(start['x'], start['y'], start['z']),
-                animationTime: 4,
+                animationTime: this.animationTime,
                 extensions: ['glTF']
             }
         };
@@ -216,10 +240,10 @@ class MultiScene {
         if (this.scene_id === 1) {
             this.camera = new THREE.PerspectiveCamera(this.json[this.sname]['perspective'], this.w / this.h, 0.1, 1400);
             this.controls = new TrackballControls(this.camera, this.renderer.domElement);
-            this.controls.maxDistance = 1500;
+            this.controls.maxDistance = this.max_distance;
             this.controls.enabled = false;
         }
-        this.camera.position.x = 1000;
+        this.camera.position.x = this.start_x;
     }
 
     init(gltf) {
@@ -232,14 +256,12 @@ class MultiScene {
         this.h = this.container.offsetHeight / this.res_param;
 
         this.step = 0;
-        this.lookSpeed = 0.5;
         this.view = {
             "x": 0,
             "y": 0,
             "z": 0
         };
-        this.lookFlag = false;
-        this.smoothing = 50;
+        
         this.keys = {
             'top': {
                 'down': false,
@@ -279,7 +301,8 @@ class MultiScene {
         this.add_shader();
         this.lisseners();
         this.keying();
-        setTimeout(HTMLControlls.controls, 15000);
+        this.constants();
+        setTimeout(HTMLControlls.controls, HTMLControlls.get_controls_time());
         HTMLControlls.res_check();
     }
 
@@ -292,7 +315,7 @@ class MultiScene {
         this.spline = new THREE.CatmullRomCurve3(vectors);
         this.spline.closed = false;
         if (this.json[this.sname]['debug']) {
-            let points = this.spline.getPoints(50);
+            let points = this.spline.getPoints(this.spline_point);
             let geometry = this.track(new THREE.BufferGeometry().setFromPoints(points));
             let material = this.track(new THREE.LineBasicMaterial({color: 0xff0000}));
             let curveObject = this.track(new THREE.Line(geometry, material));
@@ -324,17 +347,16 @@ class MultiScene {
             this.composer.addPass(this.bloomPass);
             this.afterimagePass = new AfterimagePass(0);
             this.composer.addPass(this.afterimagePass);
-            
+
             this.effectFilm = new FilmPass(0.35, 0.025, 648, false);
             this.composer.addPass(this.effectFilm);
-            
+
             var effectGrayScale = new ShaderPass(LuminosityShader); //вариант без него
             this.composer.addPass(effectGrayScale);
             this.effectSobel = this.track(new ShaderPass(SobelOperatorShader));
             this.effectSobel.uniforms[ 'resolution' ].value.x = this.w;
             this.effectSobel.uniforms[ 'resolution' ].value.y = this.h;
             this.composer.addPass(this.effectSobel);
-
         }
         this.set_after_post(this.json[this.sname]['amsterdam']);
     }
@@ -355,16 +377,16 @@ class MultiScene {
     space_rotate(v) {
         switch (v) {
             case 'left':
-                this.spaceship.rotation.y += 0.01;
+                this.spaceship.rotation.y += this.delta_spaceship_rotation;
                 break;
             case 'right':
-                this.spaceship.rotation.y -= 0.01;
+                this.spaceship.rotation.y -= this.delta_spaceship_rotation;
                 break;
             case 'up':
-                this.spaceship.rotation.z += 0.01;
+                this.spaceship.rotation.z += this.delta_spaceship_rotation;
                 break;
             case 'down':
-                this.spaceship.rotation.z -= 0.01;
+                this.spaceship.rotation.z -= this.delta_spaceship_rotation;
                 break;
         }
     }
@@ -372,29 +394,30 @@ class MultiScene {
     space_go(v) {
         switch (v) {
             case 'up':
-                this.spaceship.position.x -= 5;
-                this.camera.position.x -= 5;
+                this.spaceship.position.x -= this.delta_spaceship_position;
+                this.camera.position.x -= this.delta_spaceship_position;
                 break;
             case 'right':
-                this.spaceship.position.z -= 5;
-                this.camera.position.z -= 5;
+                this.spaceship.position.z -= this.delta_spaceship_position;
+                this.camera.position.z -= this.delta_spaceship_position;
                 break;
             case 'left':
-                this.spaceship.position.z += 5;
-                this.camera.position.z += 5;
+                this.spaceship.position.z += this.delta_spaceship_position;
+                this.camera.position.z += this.delta_spaceship_position;
                 break;
+
             case 'back':
-                this.spaceship.position.x += 5;
-                this.camera.position.x += 5;
+                this.spaceship.position.x += this.delta_spaceship_position;
+                this.camera.position.x += this.delta_spaceship_position;
                 break;
         }
-        if (this.camera.position.x < 10) {
+        if (this.camera.position.x < this.x_limit) {
             this.end_scenes();
         }
     }
 
     ship_light() {
-        let n = this.spaceship.children[2].material.visible;
+        let n = this.spaceship.children[2].material.visible; //зависит от выгруженного gltf'а
         this.spaceship.children[2].material.visible = (n) ? false : true;
     }
 
@@ -403,6 +426,7 @@ class MultiScene {
     }
 
     onload() {
+
         if (this.scene_id === this.last_scene_id) {
             this.sauto_s();
         }
@@ -451,47 +475,27 @@ class MultiScene {
         if (mark.indexOf('mirrors_custom') !== -1) {
             this.mirrors_custom();
         }
+
     }
 
     add_media(obj) {
-        let video = document.getElementById('v1');
-        let texture = this.track(new THREE.VideoTexture(video));
-        var parameters = {color: 0xffffff, map: texture, wireframe: false};
-        obj[0].material = this.track(new THREE.MeshLambertMaterial(parameters));
-        video.play();
-
-        video = document.getElementById('v2');
-        texture = this.track(new THREE.VideoTexture(video));
-        var parameters = {color: 0xffffff, map: texture, wireframe: false};
-        obj[1].material = this.track(new THREE.MeshLambertMaterial(parameters));
-        video.play();
-        this.track(obj);
+        
+        for(let i = 1; i <= 2; i++){
+            let video = document.getElementById('v' + i);
+            let texture = this.track(new THREE.VideoTexture(video));
+            var parameters = {color: 0xffffff, map: texture, wireframe: false};
+            obj[i - 1].material = this.track(new THREE.MeshLambertMaterial(parameters));
+            video.play();
+        }
     }
     add_info(obj) {
-        let video = document.getElementById('i1');
-        let texture = this.track(new THREE.VideoTexture(video));
-        var parameters = {color: 0xffffff, map: texture, wireframe: false};
-        obj[0].material = this.track(new THREE.MeshLambertMaterial(parameters));
-        video.play();
-
-        video = document.getElementById('i2');
-        texture = this.track(new THREE.VideoTexture(video));
-        parameters = {color: 0xffffff, map: texture, wireframe: false};
-        obj[1].material = this.track(new THREE.MeshLambertMaterial(parameters));
-        video.play();
-
-        video = document.getElementById('i3');
-        texture = this.track(new THREE.VideoTexture(video));
-        parameters = {color: 0xffffff, map: texture, wireframe: false};
-        obj[2].material = this.track(new THREE.MeshLambertMaterial(parameters));
-        video.play();
-
-        video = document.getElementById('i4');
-        texture = this.track(new THREE.VideoTexture(video));
-        parameters = {color: 0xffffff, map: texture, wireframe: false};
-        obj[3].material = this.track(new THREE.MeshLambertMaterial(parameters));
-        video.play();
-        this.track(obj);
+        for(let i = 1; i <= 4; i++){
+            let video = document.getElementById('i' + i);
+            let texture = this.track(new THREE.VideoTexture(video));
+            var parameters = {color: 0xffffff, map: texture, wireframe: false};
+            obj[i - 1].material = this.track(new THREE.MeshLambertMaterial(parameters));
+            video.play();
+        }
     }
 
     gltf_done(gltf) {
@@ -538,17 +542,18 @@ class MultiScene {
             this.track(this.loader.load(url, function (gltf) {
                 self.gltf_done(gltf);
             }, undefined, reject));
+
         });
     }
 
-    spaceship_done(gltf) {
+    spaceship_done(gltf) { //для конкретного карабля
         this.spaceship = this.track(gltf.scene);
-        this.spaceship.position.x = this.camera.position.x - 50;
+        this.spaceship.position.x = this.camera.position.x - this.spaceship_start_deviation;
         this.spaceship.position.y = 0;
         this.spaceship.position.z = 0;
         this.add_obj(this.spaceship);
         const material = this.track(new THREE.MeshPhongMaterial({
-            opacity: 0.4,
+            opacity: this.spaceship_light_opacity,
             transparent: true
         }));
         this.spaceship.children[2].material = material;
@@ -605,26 +610,26 @@ class MultiScene {
     figure_scroll_rotate(d) {
         if (this.json[this.sname]['extra_func'].indexOf('add_sphere') !== -1) {
             this.figure.sphere.forEach((element) => {
-                element.rotation.z += 0.01 * d;
-                element.rotation.y += 0.01 * d;
-                element.scale.x -= 0.008 * d;
-                element.scale.y -= 0.008 * d;
-                element.scale.z -= 0.008 * d;
+                element.rotation.z += this.figure_rotation_delta * d;
+                element.rotation.y += this.figure_rotation_delta * d;
+                element.scale.x -= this.figure_scale_delta * d;
+                element.scale.y -= this.figure_scale_delta * d;
+                element.scale.z -= this.figure_scale_delta * d;
             });
         }
     }
 
     rotate_scene(d) {
         if (this.json[this.sname]['extra_func'].indexOf('rotate_scene') !== -1) {
-            this.scene.rotation.x += 0.01 * d;
+            this.scene.rotation.x += this.figure_rotation_delta * d;
         }
     }
 
     scroll_for_object() {
         if (this.json[this.sname]['extra_func'].indexOf('mirrors_massive') !== -1) {
             this.figure.mirror.forEach((element) => {
-                element.rotation.z += 0.05;
-                element.rotation.y += 0.05;
+                element.rotation.z += this.object_rotation_delta;
+                element.rotation.y += this.object_rotation_delta;
             });
         }
     }
@@ -666,7 +671,6 @@ class MultiScene {
             this.scene.add(obj);
         }
     }
-    
     add_text() {
         var loader = new THREE.FontLoader();
         let self = this;
@@ -748,7 +752,7 @@ class MultiScene {
 
     point_massive() {
         var vertices = [];
-        for (var i = 0; i < 10000; i++) {
+        for (var i = 0; i < this.points_count; i++) {
             var x = THREE.MathUtils.randFloatSpread(2000);
             var y = THREE.MathUtils.randFloatSpread(2000);
             var z = THREE.MathUtils.randFloatSpread(2000);
@@ -794,7 +798,6 @@ class MultiScene {
             fragmentShader: document.getElementById('fragShader').textContent
         });
     }
-    
     scroll_timer_stop() {
         $.doTimeout('loopc');
     }
@@ -802,11 +805,11 @@ class MultiScene {
     scroll_step_done(coord, curve) {
         if (Math.abs(this.camera.position[coord] - curve[coord]) > 1) {
             let tmp = (this.camera.position[coord] > curve[coord]) ? -1 : 1;
-            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * 30)) {
-                curve[coord] += (this.scroll_dist * 5) * tmp * (-1);
+            if (Math.abs(this.camera.position[coord] - curve[coord]) > (this.scroll_dist * this.scroll_factor1)) {
+                curve[coord] += (this.scroll_dist * this.scroll_factor2) * tmp * (-1);
             }
-            this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * 5) * tmp;
-            if (this.camera.position.x < 4) { //проверка на окончание прокрутки
+            this.camera.position[coord] += Math.abs(this.camera.position[coord] - curve[coord]) / (this.scroll_dist * this.scroll_factor2) * tmp;
+            if (this.camera.position.x < this.x_limit) { //проверка на окончание прокрутки
                 this.refresh();
                 return false;
             }
@@ -820,7 +823,7 @@ class MultiScene {
         let self = this;
         $.doTimeout('loopc');
         $.doTimeout('loopc', 1, function () {
-            mScene.spaceship.position.x = mScene.camera.position.x - 50;
+            self.spaceship.position.x = self.camera.position.x - self.spaceship_start_deviation;
             return Boolean(self.scroll_step_done('x', curve) + self.scroll_step_done('y', curve) + self.scroll_step_done('z', curve));
         });
     }
@@ -835,20 +838,20 @@ class MultiScene {
         let delta;
         if (this.mobile) {
             delta = this.mob_delta;
-            this.scroll_dist = 1.5;
+            this.scroll_dist = this.scroll_dist_mobile_factor;
         } else {
             e = e || window.event;
-            delta = (e !== undefined) ? e.deltaY || e.detail || e.wheelDelta : 20;
+            delta = (e !== undefined) ? e.deltaY || e.detail || e.wheelDelta : this.delta_scroll_def;
         }
         delta = this.do_step(delta);
         this.figure_scroll_rotate(delta);
         this.rotate_scene(delta);
         this.step = (this.step < 0) ? 0 : this.step;
-        let curve_coord = this.spline.getPoint(this.step / 600);
+        let curve_coord = this.spline.getPoint(this.step / this.curve_point_count);
         this.scroll_do(curve_coord);
         this.uniforms[ "color" ].value.offsetHSL(0.005, 0, 0);
         if (!this.json[this.sname]['animation']) {
-            this.mixer.update(curve_coord.x / 2000);
+            this.mixer.update(curve_coord.x / this.curve_animation_factor);
         }
         this.scroll_for_object();
     }
@@ -857,9 +860,8 @@ class MultiScene {
         y = this.h / 4 - y / 2;
         z = this.w / 4 - z / 2;
         this.controls.target = new THREE.Vector3(this.view.x, y, z);
-
         if (this.spaceship) {
-            this.spaceship.position.x = this.camera.position.x - 50;
+            this.spaceship.position.x = this.camera.position.x - this.spaceship_start_deviation;
             this.spaceship.position.y = y;
             this.spaceship.position.z = z;
         }
@@ -887,15 +889,14 @@ class MultiScene {
     end_scenes() {
         $.doTimeout('a_scroll');
         HTMLControlls.endScene();
-        setTimeout(mScene.reloc(), 10000);
-
+        setTimeout(this.reloc(), this.reloc_timer);
     }
 
     mobile_info() {
         if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
             HTMLControlls.mobileIcon();
         } else {
-            setTimeout(HTMLControlls.drop_wsda, 15000);
+            setTimeout(HTMLControlls.drop_wsda, HTMLControlls.get_controls_time());
         }
     }
 
@@ -914,7 +915,7 @@ class MultiScene {
             this.sauto = true;
             $('#play img').attr('src', 'assets/stop.png');
             let self = this;
-            $.doTimeout('a_scroll', 100, function () {
+            $.doTimeout('a_scroll', self.ms_upd, function () {
                 self.on_wheel();
                 return true;
             });
@@ -936,7 +937,7 @@ class MultiScene {
         $('#loader').on('touchmove', function (e) {
             self.mobile = true;
             var currentY = e.originalEvent.touches[0].clientY;
-            self.mob_delta = (currentY > this.lastY) ? -0.05 : 0.05;
+            self.mob_delta = (currentY > this.lastY) ? (-1) * self.mob_delta_factor : self.mob_delta_factor;
             this.lastY = currentY;
             $('#loader').trigger('wheel');
         });
@@ -959,40 +960,39 @@ class MultiScene {
     keying() {
         var self = this;
         $('body').keydown(function (event) {
-            if (event.keyCode === 49) {
-                self.after_post();
-                HTMLControlls.rand_rotate();
-                AudioControlls.effects();
-            }
-            if (event.keyCode === 50) {
-                self.after_switch();
-            }
-            if (event.keyCode === 37) {
-                self.space_rotate('left');
-            }
-            if (event.keyCode === 39) {
-                self.space_rotate('right');
-            }
-            if (event.keyCode === 38) {
-                self.space_rotate('up');
-            }
-            if (event.keyCode === 40) {
-                self.space_rotate('down');
-            }
-            if (event.keyCode === 87) {
-                self.space_go('up');
-            }
-            if (event.keyCode === 68) {
-                self.space_go('right');
-            }
-            if (event.keyCode === 65) {
-                self.space_go('left');
-            }
-            if (event.keyCode === 83) {
-                self.space_go('back');
-            }
-            if (event.keyCode === 83) {
-                self.space_go('back');
+            switch (event.keyCode) {
+                case 49:
+                    self.after_post();
+                    HTMLControlls.rand_rotate();
+                    AudioControlls.effects();
+                    break;
+                case 50:
+                    self.after_switch();
+                    break;
+                case 37:
+                    self.space_rotate('left');
+                    break;
+                case 39:
+                    self.space_rotate('right');
+                    break;
+                case 38:
+                    self.space_rotate('up');
+                    break;
+                case 40:
+                    self.space_rotate('down');
+                    break;
+                case 87:
+                    self.space_go('up');
+                    break;
+                case 68:
+                    self.space_go('right');
+                    break;
+                case 65:
+                    self.space_go('left');
+                    break;
+                case 83:
+                    self.space_go('back');
+                    break;
             }
         });
     }
@@ -1003,5 +1003,5 @@ mScene.init(1);
 mScene.onload();
 
 $("#dis").click(function ( ) {
-    window.location = '/href';
+    window.location = '/';
 });
