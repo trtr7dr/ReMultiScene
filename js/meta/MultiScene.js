@@ -219,7 +219,6 @@ class MultiScene {
         this.sauto = false;
         this.last_scene_id = Object.keys(this.json).length;
     }
-    
 
     set_scenes(id) {
         this.scene_id = id;
@@ -295,7 +294,6 @@ class MultiScene {
         this.godrayRenderTargetResolutionMultiplier = 1.0 / 4.0;
 
         this.scene = new THREE.Scene();
-
         this.loader = new GLTFLoader();
         this.loader.setDDSLoader(new DDSLoader());
         this.add_shader();
@@ -426,7 +424,6 @@ class MultiScene {
     }
 
     onload() {
-
         if (this.scene_id === this.last_scene_id) {
             this.sauto_s();
         }
@@ -475,11 +472,9 @@ class MultiScene {
         if (mark.indexOf('mirrors_custom') !== -1) {
             this.mirrors_custom();
         }
-
     }
 
     add_media(obj) {
-        
         for(let i = 1; i <= 2; i++){
             let video = document.getElementById('v' + i);
             let texture = this.track(new THREE.VideoTexture(video));
@@ -542,7 +537,6 @@ class MultiScene {
             this.track(this.loader.load(url, function (gltf) {
                 self.gltf_done(gltf);
             }, undefined, reject));
-
         });
     }
 
@@ -566,20 +560,17 @@ class MultiScene {
             this.track(this.loader.load('assets/models/space.gltf', function (gltf) {
                 self.spaceship_done(gltf);
             }, undefined, reject));
-
         });
     }
 
     init_scene(sceneInfo) {
         let fog = this.json[this.sname]['fog'];
         this.scene.fog = this.track(new THREE.Fog(new THREE.Color(fog.color), fog.near, fog.far));
-
         let ambient = this.track(new THREE.AmbientLight(this.json[this.sname]['ambient']));
         this.scene.add(ambient);
         let lgt = this.json[this.sname]['light'];
         let light = this.track(new THREE.HemisphereLight(lgt.sky, lgt.color, lgt.power));
         this.scene.add(light);
-
         this.renderer.shadowMap.enabled = true; //?
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.gltf = this.load_GLTF(sceneInfo.url);
@@ -671,6 +662,7 @@ class MultiScene {
             this.scene.add(obj);
         }
     }
+    
     add_text() {
         var loader = new THREE.FontLoader();
         let self = this;
@@ -798,6 +790,7 @@ class MultiScene {
             fragmentShader: document.getElementById('fragShader').textContent
         });
     }
+    
     scroll_timer_stop() {
         $.doTimeout('loopc');
     }
