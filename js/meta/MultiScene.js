@@ -291,8 +291,8 @@ class MultiScene {
                 'smooth': false
             }
         };
+        
         this.godrayRenderTargetResolutionMultiplier = 1.0 / 4.0;
-
         this.scene = new THREE.Scene();
         this.loader = new GLTFLoader();
         this.loader.setDDSLoader(new DDSLoader());
@@ -403,7 +403,6 @@ class MultiScene {
                 this.spaceship.position.z += this.delta_spaceship_position;
                 this.camera.position.z += this.delta_spaceship_position;
                 break;
-
             case 'back':
                 this.spaceship.position.x += this.delta_spaceship_position;
                 this.camera.position.x += this.delta_spaceship_position;
