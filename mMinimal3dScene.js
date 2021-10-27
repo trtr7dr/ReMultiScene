@@ -4,24 +4,16 @@ import { TrackballControls } from './three/jsm/controls/TrackballControls.js';
 import { GLTFLoader } from './three/jsm/loaders/GLTFLoader.js';
 import { DDSLoader } from './three/jsm/loaders/DDSLoader.js';
 import { Reflector } from './three/jsm/Reflector.js';
-
 import { EffectComposer } from './three/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from './three/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './three/jsm/postprocessing/UnrealBloomPass.js';
 import { AfterimagePass } from './three/jsm/postprocessing/AfterimagePass.js';
 import { FilmPass } from './three/jsm/postprocessing/FilmPass.js';
-
 import { BokehPass } from './three/jsm/postprocessing/BokehPass.js'; //нет в ресурстрекере
-
 import { OutlinePass } from './three/jsm/postprocessing/OutlinePass.js';
-
-
 import { ShaderPass } from './three/jsm/postprocessing/ShaderPass.js';
 import { LuminosityShader } from './three/jsm/shaders/LuminosityShader.js';
 import { SobelOperatorShader } from './three/jsm/shaders/SobelOperatorShader.js';
-
-
-
 
 class ResourceTracker {
     constructor() {
@@ -31,12 +23,10 @@ class ResourceTracker {
         if (!resource) {
             return resource;
         }
-
         if (Array.isArray(resource)) {
             resource.forEach(resource => this.track(resource));
             return resource;
         }
-
         if (resource.dispose || resource instanceof THREE.Object3D) {
             this.resources.add(resource);
         }
@@ -64,6 +54,7 @@ class ResourceTracker {
         }
         return resource;
     }
+
     untrack(resource) {
         this.resources.delete(resource);
     }
@@ -117,13 +108,11 @@ class ResourceTracker {
     }
 
     dispose() {
-
         for (let i = 0; i < mScene.scene.children.length; i++) {
             this.disposeNode(mScene.scene.children[i]);
             mScene.scene.remove(mScene.scene.children[i]);
         }
         for (const resource of this.resources) {
-
             if (resource instanceof THREE.Object3D) {
                 if (resource.parent) {
                     resource.parent.remove(resource);
@@ -180,6 +169,11 @@ class ResourceTracker {
 
 class Min3dScene {
 
+    constants() {
+        this.lastY;
+        this.h_fmob = document.documentElement.clientHeight;
+    }
+
     constructor(data) {
         this.json = data;
         this.resTracker = new ResourceTracker();
@@ -190,6 +184,7 @@ class Min3dScene {
         this.res_param = HTMLControlls.res_param_get();
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
+        this.constants();
     }
 
     onMouseMove(event) {
@@ -240,7 +235,6 @@ class Min3dScene {
         };
         this.lookFlag = false;
         this.smoothing = 50;
-
         this.scene = new THREE.Scene();
         this.scene.background = 'white';
         this.loader = new GLTFLoader();
@@ -293,7 +287,6 @@ class Min3dScene {
         this.bloomPass.strength = 0.3;
         this.bloomPass.radius = 1;
         //this.composer.bokeh = this.bokehPass;
-
         this.afterimagePass = new AfterimagePass();
         this.afterimagePass.uniforms[ "damp" ].value = 0.3;
         this.afterimagePass.renderToScreen = true;
@@ -348,11 +341,9 @@ class Min3dScene {
                     return true;
                 }
             };
-            
             return false;
         });
     }
-    
 
     gltf_done(gltf) {
         let object = this.track(gltf.scene);
@@ -415,6 +406,8 @@ class Min3dScene {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.gltf = this.load_GLTF(sceneInfo.url);
         this.camera.position.copy(sceneInfo.cameraPos);
+        
+        this.lisseners();
     }
 
     add_obj(obj) {
@@ -465,7 +458,6 @@ class Min3dScene {
             uniforms: this.uniforms,
             fragmentShader: document.getElementById('fragShader').textContent
         });
-
         const vertexCount = 200 * 3;
         const colors = [];
         for (let i = 0; i < vertexCount; i++) {
@@ -473,7 +465,6 @@ class Min3dScene {
             colors.push(Math.random() * 255);
             colors.push(Math.random() * 255);
             colors.push(Math.random() * 255);
-
         }
         this.colorAttribute = new THREE.Uint8BufferAttribute(colors, 4);
         this.colorAttribute.normalized = true;
@@ -515,12 +506,10 @@ class Min3dScene {
         this.raycaster.setFromCamera(this.mouse, this.camera);
         let intersects = this.raycaster.intersectObjects(this.scene.children);
         if (intersects.length > 0 && intersects[ 0 ].object.name !== 'ousia') {
-
             let selectedObject = intersects[ 0 ].object;
             selectedObject.scale.set(2, 2, 2);
             this.addSelectedObject(selectedObject);
             HTMLControlls.outline(true);
-
         } else {
             if (this.selectedObjects) {
                 for (let i = 0; i < Object.keys(this.selectedObjects).length; i++) {
@@ -550,9 +539,50 @@ class Min3dScene {
         HTMLControlls.endScene();
         setTimeout(mScene.reloc(), 10000);
     }
-}
 
-// Старт событий и таймеров
+    mobile_controls() {
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
+            //HTMLControlls.mobileIcon();
+        } else {
+
+        }
+    }
+
+    lisseners() {
+        let self = this;
+        this.mobile_controls();
+        $('#container').on('wheel', function (e) {
+            $.doTimeout('a_scroll');
+            $('#play').removeClass("auto_scroll_on");
+            self.on_wheel();
+        });
+
+        $('#loader').on('touchmove', function (e) {
+            self.mobile = true;
+            var currentY = e.originalEvent.touches[0].clientY;
+            self.mob_delta = (currentY > self.lastY) ? -0.05 : 0.05;
+            self.lastY = currentY;
+            $('#loader').trigger('wheel');
+        });
+
+        $("#container").click(function (event) { // обработка ссылок
+            self.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            self.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            self.inter_click();
+        });
+
+        document.oncontextmenu = function () {
+            return false;
+        };
+
+        $("#container").mousemove(function (event) {
+            self.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            self.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            self.cursor_move(event.clientX / mScene.res_param, event.clientY / mScene.res_param);
+            self.inter();
+        });
+    }
+}
 
 var json = {
     "scene1": {
@@ -596,44 +626,3 @@ var json = {
 var mScene = new M3dScene(json);
 mScene.init(1);
 mScene.onload();
-
-$('#container').on('wheel', function (e) {
-    $.doTimeout('a_scroll');
-    $('#play').removeClass("auto_scroll_on");
-    mScene.on_wheel();
-});
-
-var lastY;
-var h_fmob = document.documentElement.clientHeight;
-$('#loader').on('touchmove', function (e) {
-    mScene.mobile = true;
-    var currentY = e.originalEvent.touches[0].clientY;
-    mScene.mob_delta = (currentY > lastY) ? -0.05 : 0.05;
-    lastY = currentY;
-    $('#loader').trigger('wheel');
-});
-
-if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|BB|PlayBook|IEMobile|Windows Phone|Kindle|Silk|Opera Mini/i.test(navigator.userAgent)) {
-    //HTMLControlls.mobileIcon();
-} else {
-    
-}
-
-
-$("#container").click(function (event) { // обработка ссылок
-    mScene.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mScene.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    mScene.inter_click();
-});
-
-document.oncontextmenu = function () {
-    return false;
-};
-
-
-$("#container").mousemove(function (event) {
-    mScene.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mScene.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    mScene.cursor_move(event.clientX / mScene.res_param, event.clientY / mScene.res_param);
-    mScene.inter();
-});
