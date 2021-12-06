@@ -167,7 +167,7 @@ class ResourceTracker {
     }
 }
 
-class Min3dScene {
+class M3dScene {
 
     constants() {
         this.lastY;
